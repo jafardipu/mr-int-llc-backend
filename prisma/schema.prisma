@@ -1,0 +1,529 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  name        String?
+  email       String     @unique
+  password    String?
+  fcmToken    String?
+  status      status     @default(active)
+  loginWth    Login_With @default(credentials)
+  role        Role       @default(retail)
+  profile     String?
+  phoneNumber String?
+  isVerified  Boolean    @default(false)
+  customerId  String?
+  expireAt    DateTime?  @default(now())
+  isDeleted   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  verification        Verification?
+  deviceHistory       DeviceHistory[]
+  address             Address[]
+  cart                Cart?
+  wishlist            Wishlist[]
+  orders              Order[]
+  payments            Payment[]
+  reviews             Review[]
+  notifications       Notification[]
+  prepServiceRequests PrepServiceRequest[]
+  contactMessages     ContactMessage[]
+
+  @@map("users")
+}
+
+model Verification {
+  userId    String    @map("_id") @db.ObjectId
+  otp       Int
+  expiredAt DateTime?
+  status    Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId])
+  @@map("verifications")
+}
+
+model DeviceHistory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  ip        String?
+  browser   String?
+  os        String?
+  device    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("device_histories")
+}
+
+model Address {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String  @db.ObjectId
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  location     Json?
+  isDefault    Boolean @default(false)
+  isDeleted    Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[]
+
+  @@map("addresses")
+}
+
+model Category {
+  id        String         @id @default(auto()) @map("_id") @db.ObjectId
+  name      String         @unique
+  image     String?
+  status    CategoryStatus @default(active)
+  isDeleted Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  products Product[]
+  faqs     Faq[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  image     String?
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  slug            String?       @unique
+  description     String?
+  sku             String        @unique
+  retailPrice     Float
+  wholesalePrice  Float
+  wholesaleMinQty Int           @default(1)
+  stock           Int           @default(0)
+  brandId         String        @db.ObjectId
+  categoryId      String        @db.ObjectId
+  isDeal          Boolean       @default(false)
+  dealPrice       Float?
+  asin            String?
+  subcategory     String?
+  amazonUrl       String?
+  walmartUrl      String?
+  volumeTiers     Json?
+  status          ProductStatus @default(active)
+  avgRating       Float         @default(0)
+  totalReview     Int           @default(0)
+  isDeleted       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  brand      Brand          @relation(fields: [brandId], references: [id])
+  category   Category       @relation(fields: [categoryId], references: [id])
+  images     ProductImage[]
+  cartItems  CartItem[]
+  wishlist   Wishlist[]
+  orderItems OrderItem[]
+  reviews    Review[]
+  deals      Deal[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isDeal])
+  @@index([status])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  productId String  @db.ObjectId
+  url       String
+  isPrimary Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("product_images")
+}
+
+model Deal {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  image       String?
+  productId   String    @db.ObjectId
+  dealPrice   Float
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("deals")
+}
+
+model Cart {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cartId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+model Wishlist {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@map("wishlists")
+}
+
+model Order {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber  String       @unique
+  userId       String       @db.ObjectId
+  addressId    String?      @db.ObjectId
+  customerType CustomerType
+  status       OrderStatus  @default(pending)
+  subtotal     Float
+  shippingFee  Float        @default(0)
+  tax          Float        @default(0)
+  discount     Float        @default(0)
+  total        Float
+  notes        String?
+  promoCodeId  String?      @db.ObjectId
+  promoCode    String?
+  isDeleted    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id])
+  address       Address?        @relation(fields: [addressId], references: [id])
+  promo         PromoCode?      @relation(fields: [promoCodeId], references: [id])
+  items         OrderItem[]
+  payment       Payment?
+  notifications Notification[]
+  promoRedemption PromoRedemption?
+
+  @@index([userId])
+  @@index([status])
+  @@index([customerType])
+  @@index([promoCodeId])
+  @@map("orders")
+}
+
+model PromoCode {
+  id             String            @id @default(auto()) @map("_id") @db.ObjectId
+  code           String            @unique
+  description    String?
+  discountType   PromoDiscountType
+  discountValue  Float
+  minOrderAmount Float             @default(0)
+  maxDiscount    Float?
+  usageLimit     Int?
+  usedCount      Int               @default(0)
+  perUserLimit   Int               @default(1)
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean           @default(true)
+  customerType   CustomerType?
+  isDeleted      Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  orders      Order[]
+  redemptions PromoRedemption[]
+
+  @@index([isActive])
+  @@index([isDeleted])
+  @@map("promo_codes")
+}
+
+model PromoRedemption {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  promoCodeId String   @db.ObjectId
+  userId      String   @db.ObjectId
+  orderId     String   @unique @db.ObjectId
+  discount    Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id])
+  order     Order     @relation(fields: [orderId], references: [id])
+
+  @@index([promoCodeId])
+  @@index([userId])
+  @@map("promo_redemptions")
+}
+
+model OrderItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String   @db.ObjectId
+  productId String   @db.ObjectId
+  name      String
+  sku       String
+  quantity  Int
+  unitPrice Float
+  total     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String         @db.ObjectId
+  orderId       String         @unique @db.ObjectId
+  amount        Float
+  status        PAYMENT_STATUS @default(pending)
+  transactionId String?        @unique
+  paymentMethod String?
+  paidAt        DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model PrepServiceRequest {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String            @db.ObjectId
+  serviceType String
+  status      PrepServiceStatus @default(under_review)
+  notes       String?
+  attachments String[]
+  adminNote   String?
+  isDeleted   Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("prep_service_requests")
+}
+
+model Review {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  productId String   @db.ObjectId
+  rating    Float
+  review    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@map("reviews")
+}
+
+model Contents {
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+  type              String @unique @default("main")
+  termsAndCondition String
+  privacyPolicy     String
+  refundPolicy      String
+  shippingPolicy    String
+  aboutUs           String
+  copyRight         String
+  footerText        String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contents")
+}
+
+model Faq {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  question   String
+  answer     String
+  categoryId String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("faqs")
+}
+
+model Notification {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  receiverId  String? @db.ObjectId
+  orderId     String? @db.ObjectId
+  message     String
+  description String?
+  isRead      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User?  @relation(fields: [receiverId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@map("notifications")
+}
+
+model Banner {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  image     String
+  subtitle  String?
+  link      String?
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banners")
+}
+
+model ContactMessage {
+  id        String               @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?              @db.ObjectId
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    ContactMessageStatus @default(pending)
+  reply     String?
+  repliedAt DateTime?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("contact_messages")
+}
+
+enum Role {
+  supper_admin
+  admin
+  retail
+  wholesale
+}
+
+enum status {
+  active
+  blocked
+}
+
+enum Login_With {
+  credentials
+  google
+  facebook
+  apple
+}
+
+enum ContactMessageStatus {
+  pending
+  replied
+}
+
+enum CategoryStatus {
+  active
+  inactive
+}
+
+enum ProductStatus {
+  active
+  inactive
+  out_of_stock
+}
+
+enum CustomerType {
+  retail
+  wholesale
+}
+
+enum OrderStatus {
+  pending
+  processing
+  completed
+  cancelled
+}
+
+enum PAYMENT_STATUS {
+  pending
+  paid
+  refunded
+  canceled
+}
+
+enum PrepServiceStatus {
+  under_review
+  correction_required
+  completed
+}
+
+enum PromoDiscountType {
+  percentage
+  fixed
+}

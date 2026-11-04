@@ -1,0 +1,42 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: mr_int_llc_ecom_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:5050:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      target: runtime
+    container_name: mr_int_llc_ecom_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      PORT: "5000"
+      SOCKET_PORT: "5005"
+      IP: 0.0.0.0
+      SERVER_URL: http://103.186.20.117
+    ports:
+      - "80:5000"
+      - "5000:5000"
+      - "5005:5005"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:

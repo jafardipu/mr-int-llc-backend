@@ -1,0 +1,21 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: mr-int-llc-ecom
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Public HTTP -> Service NodePort 30080 (svc/api port 80)
+      - containerPort: 30080
+        hostPort: 80
+        listenAddress: "0.0.0.0"
+        protocol: TCP
+      # Direct API port
+      - containerPort: 30500
+        hostPort: 5000
+        listenAddress: "0.0.0.0"
+        protocol: TCP
+      # Socket.IO
+      - containerPort: 30505
+        hostPort: 5005
+        listenAddress: "0.0.0.0"
+        protocol: TCP
