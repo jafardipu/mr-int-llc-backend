@@ -1,0 +1,10 @@
+{
+  "prisma.pinToPrisma6": true,
+  "json.schemaDownload.enable": true,
+  "json.schemas": [
+    {
+      "fileMatch": ["tsconfig.json", "tsconfig.*.json"],
+      "url": "./.vscode/tsconfig.schema.json"
+    }
+  ]
+}

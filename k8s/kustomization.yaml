@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mr-int-llc-ecom
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.example.yaml
+  - redis.yaml
+  - api.yaml
+images:
+  - name: mr-int-llc-ecom-api
+    newTag: local

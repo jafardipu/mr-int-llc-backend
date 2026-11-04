@@ -1,4 +1,9 @@
 node_modules
-pnpm-lock.yaml
-pnpm-workspace.yaml
+# Keep environment variables out of version control
+.env
 
+generated
+dist
+firebase.json
+
+deploy.sh

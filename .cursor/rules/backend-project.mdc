@@ -1,0 +1,22 @@
+---
+description: Follow the current repository architecture and dynamically detect its database/ORM before implementation.
+alwaysApply: true
+---
+
+# Backend Project Rules
+
+- Read `AGENTS.md` and `PROJECT_ARCHITECTURE.md` before substantial implementation.
+- Match the nearest existing feature module; do not impose a different architecture.
+- Detect the current repository's actual stack, database, ORM, package manager, and runtime from its configuration; do not assume they match another project.
+- Database detection is mandatory: inspect the active Prisma datasource provider/schema (and Prisma config), database/ORM dependencies, client initialization, and runtime configuration. Recognize at least MongoDB (`mongodb`), MySQL (`mysql`), and PostgreSQL (`postgresql`).
+- Cross-check evidence. If there are multiple datasources or conflicting configuration, trace the datasource used by the feature. Ask if it remains ambiguous; never guess.
+- Dynamic detection means adapting to the configured database in each project, not silently making one project connect to all three. Never switch providers or migrate data unless explicitly requested.
+- Use provider-appropriate schema, types, queries, indexes, relations, transactions, migrations, and tests. Do not transfer MongoDB ObjectId assumptions to SQL or SQL-only assumptions to MongoDB; do not assume MySQL and PostgreSQL are identical.
+- For this uploaded reference repository only, the observed stack is TypeScript ESM, Express 5, Prisma 6 + MongoDB, Zod, Redis, Socket.IO, and pnpm.
+- Feature modules belong in `src/app/module/<feature>/` when that is the current repository convention. Follow neighboring controller/service/route/validation naming.
+- Controllers use the existing async wrapper and response helper; services own business logic and data access.
+- Use existing import aliases, ESM extensions, shared database client, validation, auth, error, and router-registration conventions.
+- Verify every model field, enum, relation, and provider-specific feature against the active schema/configuration.
+- Preserve the existing API response envelope and avoid unrelated refactors.
+- Do not invent fields, roles, endpoints, environment variables, or credentials. Never commit `.env` or secrets.
+- Run relevant build/lint/test/schema checks when appropriate; accurately report results and state the detected database/ORM.

@@ -1,0 +1,36 @@
+import AppError from '@app/error/AppError.js';
+import prisma from '@app/shared/prisma.js';
+import type { Prisma } from '../../../../generated/prisma/index.js';
+import httpStatus from 'http-status';
+
+const updateContents = async (payload: Prisma.ContentsUpdateInput) => {
+  const contents = await prisma.contents.findFirst({ where: {} });
+  if (!contents)
+    throw new AppError(httpStatus.BAD_REQUEST, 'initial contents not found ');
+
+  const result = await prisma.contents.update({
+    where: { id: contents.id },
+    data: payload,
+  });
+
+  if (!result)
+    throw new AppError(httpStatus.BAD_REQUEST, 'Failed to update contents');
+  return result;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getContents = async (query: Record<string, any>) => {
+  const result = await prisma.contents.findFirst();
+
+  if (!query?.key) {
+    return result;
+  }
+
+  const key = query.key as keyof typeof result;
+  return result ? { [key]: result[key] } : { [key]: null };
+};
+
+export const contentsService = {
+  getContents,
+  updateContents,
+};

@@ -1,0 +1,16 @@
+
+{
+    "mcpServers": {
+      "filesystem": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "D:/ongiong/mr_int_llc_ecom_server"
+        ]
+      }
+    }
+  }
+  
