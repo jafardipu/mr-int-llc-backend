@@ -17,6 +17,15 @@ type Op = {
       example?: string | number;
     }
   >;
+  headers?: Record<
+    string,
+    {
+      type?: string;
+      description?: string;
+      required?: boolean;
+      example?: string;
+    }
+  >;
   pathParams?: string[];
   body?: Record<string, unknown>;
   multipart?: boolean;
@@ -123,26 +132,54 @@ const ops: Op[] = [
     method: 'post',
     path: '/otp/verify-otp',
     summary: 'Verify OTP (primary)',
+    description:
+      'Requires header `token` = OTP session JWT from register/resend (`data.otpToken.token`). Body only needs `otp` (6 digits). Do not send email in this body. Token expires in 3 minutes.',
     tags: ['OTP'],
+    headers: {
+      token: {
+        type: 'string',
+        required: true,
+        description:
+          'OTP session JWT from register/resend response (data.otpToken.token). Not Authorization Bearer.',
+        example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      },
+    },
     body: {
-      email: { type: 'string', format: 'email' },
-      otp: { type: 'number' },
+      otp: {
+        type: 'string',
+        example: '123456',
+        description: '6-digit OTP (string preferred; number also accepted)',
+      },
     },
   },
   {
     method: 'post',
     path: '/otp/verify',
     summary: 'Verify OTP (alias)',
+    description:
+      'Alias of /otp/verify-otp. Header `token` required; body `{ otp }` only.',
     tags: ['OTP'],
+    headers: {
+      token: {
+        type: 'string',
+        required: true,
+        description:
+          'OTP session JWT from register/resend response (data.otpToken.token)',
+      },
+    },
     body: {
-      email: { type: 'string', format: 'email' },
-      otp: { type: 'number' },
+      otp: {
+        type: 'string',
+        example: '123456',
+        description: '6-digit OTP',
+      },
     },
   },
   {
     method: 'post',
     path: '/otp/resend-otp',
     summary: 'Resend OTP (primary)',
+    description: 'Returns a new OTP session token in `data.token` (use as header `token` on verify).',
     tags: ['OTP'],
     body: { email: { type: 'string', format: 'email' } },
   },
@@ -1186,6 +1223,22 @@ function buildParameters(op: Op) {
       schema: objectId,
     });
   }
+  if (op.headers) {
+    for (const [name, schema] of Object.entries(op.headers)) {
+      const { required, description, example, type, ...rest } = schema;
+      params.push({
+        name,
+        in: 'header',
+        required: Boolean(required),
+        description,
+        schema: {
+          type: type || 'string',
+          ...(example !== undefined ? { example } : {}),
+          ...rest,
+        },
+      });
+    }
+  }
   if (op.query) {
     for (const [name, schema] of Object.entries(op.query)) {
       const { required, description, ...rest } = schema;
@@ -1313,12 +1366,16 @@ export function buildOpenApiDocument(options?: { publicOrigin?: string }) {
       ].join('\n'),
     },
     servers: [
-      ...(publicOrigin
-        ? [{ url: `${publicOrigin}/api/v1`, description: 'Public API server' }]
+      {
+        url: 'https://103.186.20.117:4000/api/v1',
+        description: 'Public production server',
+      },
+      ...(publicOrigin && publicOrigin !== 'https://103.186.20.117:4000'
+        ? [{ url: `${publicOrigin}/api/v1`, description: 'Configured SERVER_URL' }]
         : []),
       { url: '/api/v1', description: 'Current host (relative)' },
+      { url: 'http://127.0.0.1:4000/api/v1', description: 'Local pnpm / docker' },
       { url: 'http://127.0.0.1:5000/api/v1', description: 'Local / port-forward' },
-      { url: 'http://127.0.0.1:4000/api/v1', description: 'Local pnpm dev' },
     ],
     tags: tagNames.map(name => ({ name })),
     components: {

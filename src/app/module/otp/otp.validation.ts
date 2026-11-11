@@ -2,10 +2,16 @@ import { z } from 'zod';
 
 const verifyOtpZodSchema = z.object({
   body: z.object({
+    // Accept string or number from clients/Swagger, then enforce 6 digits
     otp: z
-      .string()
-      .nonempty('otp is required')
-      .length(6, { message: 'otp must be exactly 6 characters long' }),
+      .union([z.string(), z.number()])
+      .transform(value => String(value).trim())
+      .pipe(
+        z
+          .string()
+          .nonempty('otp is required')
+          .length(6, { message: 'otp must be exactly 6 characters long' }),
+      ),
   }),
 });
 
