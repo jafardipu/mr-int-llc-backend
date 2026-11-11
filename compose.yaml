@@ -26,14 +26,14 @@ services:
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      PORT: "5000"
-      SOCKET_PORT: "5005"
+      PORT: "4000"
+      SOCKET_PORT: "4005"
       IP: 0.0.0.0
-      SERVER_URL: http://103.186.20.117
+      SERVER_URL: https://103.186.20.117:4000
     ports:
       - "80:5000"
-      - "5000:5000"
-      - "5005:5005"
+      - "4000:4000"
+      - "4005:4005"
     depends_on:
       redis:
         condition: service_healthy
