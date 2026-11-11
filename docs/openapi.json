@@ -7,16 +7,20 @@
   },
   "servers": [
     {
+      "url": "https://103.186.20.117:4000/api/v1",
+      "description": "Public production server"
+    },
+    {
       "url": "/api/v1",
       "description": "Current host (relative)"
     },
     {
-      "url": "http://127.0.0.1:5000/api/v1",
-      "description": "Local / port-forward"
+      "url": "http://127.0.0.1:4000/api/v1",
+      "description": "Local pnpm / docker"
     },
     {
-      "url": "http://127.0.0.1:4000/api/v1",
-      "description": "Local pnpm dev"
+      "url": "http://127.0.0.1:5000/api/v1",
+      "description": "Local / port-forward"
     }
   ],
   "tags": [
@@ -463,7 +467,19 @@
           "OTP"
         ],
         "summary": "Verify OTP (primary)",
-        "description": "",
+        "description": "Requires header `token` = OTP session JWT from register/resend (`data.otpToken.token`). Body only needs `otp` (6 digits). Do not send email in this body. Token expires in 3 minutes.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "header",
+            "required": true,
+            "description": "OTP session JWT from register/resend response (data.otpToken.token). Not Authorization Bearer.",
+            "schema": {
+              "type": "string",
+              "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -471,12 +487,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  },
                   "otp": {
-                    "type": "number"
+                    "type": "string",
+                    "example": "123456",
+                    "description": "6-digit OTP (string preferred; number also accepted)"
                   }
                 }
               }
@@ -515,7 +529,18 @@
           "OTP"
         ],
         "summary": "Verify OTP (alias)",
-        "description": "",
+        "description": "Alias of /otp/verify-otp. Header `token` required; body `{ otp }` only.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "header",
+            "required": true,
+            "description": "OTP session JWT from register/resend response (data.otpToken.token)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -523,12 +548,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  },
                   "otp": {
-                    "type": "number"
+                    "type": "string",
+                    "example": "123456",
+                    "description": "6-digit OTP"
                   }
                 }
               }
@@ -567,7 +590,7 @@
           "OTP"
         ],
         "summary": "Resend OTP (primary)",
-        "description": "",
+        "description": "Returns a new OTP session token in `data.token` (use as header `token` on verify).",
         "requestBody": {
           "required": true,
           "content": {

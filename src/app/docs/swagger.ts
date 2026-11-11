@@ -12,13 +12,15 @@ function requestOrigin(req: Request) {
 }
 
 export const setupSwagger = (app: Application) => {
-  const envOrigin = process.env.SERVER_URL?.replace(/\/$/, '');
-  const fallbackDocument = buildOpenApiDocument(
-    envOrigin ? { publicOrigin: envOrigin } : {},
-  );
+  const preferredOrigin = 'http://103.186.20.117:4000';
+  const envOrigin = process.env.SERVER_URL?.replace(/\/$/, '') || preferredOrigin;
+  const fallbackDocument = buildOpenApiDocument({
+    publicOrigin: preferredOrigin,
+  });
 
   app.get('/api/docs.json', (req: Request, res: Response) => {
-    const origin = requestOrigin(req) || envOrigin;
+    // Prefer fixed public origin so Try-it-out hits the production host
+    const origin = preferredOrigin || envOrigin || requestOrigin(req);
     const document = buildOpenApiDocument(
       origin ? { publicOrigin: origin } : {},
     );
