@@ -132,8 +132,8 @@ model Product {
   categoryId      String        @db.ObjectId
   isDeal          Boolean       @default(false)
   dealPrice       Float?
+  isFeatured      Boolean       @default(false)
   asin            String?
-  subcategory     String?
   amazonUrl       String?
   walmartUrl      String?
   volumeTiers     Json?
@@ -156,6 +156,7 @@ model Product {
   @@index([categoryId])
   @@index([brandId])
   @@index([isDeal])
+  @@index([isFeatured])
   @@index([status])
   @@map("products")
 }
@@ -173,11 +174,9 @@ model ProductImage {
 
 model Deal {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  description String?
-  image       String?
   productId   String    @db.ObjectId
   dealPrice   Float
+  type        DealType  @default(weekly)
   startDate   DateTime?
   endDate     DateTime?
   isActive    Boolean   @default(true)
@@ -187,6 +186,8 @@ model Deal {
 
   product Product @relation(fields: [productId], references: [id])
 
+  @@index([type])
+  @@index([isActive])
   @@map("deals")
 }
 
@@ -432,11 +433,8 @@ model Notification {
 
 model Banner {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
   image     String
-  subtitle  String?
   link      String?
-  position  Int      @default(0)
   isActive  Boolean  @default(true)
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -526,4 +524,9 @@ enum PrepServiceStatus {
 enum PromoDiscountType {
   percentage
   fixed
+}
+
+enum DealType {
+  weekly
+  clearance
 }

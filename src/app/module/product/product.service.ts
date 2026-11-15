@@ -50,7 +50,7 @@ const createProduct = async (payload: any) => {
   if (data.amazonUrl === '') data.amazonUrl = null;
   if (data.walmartUrl === '') data.walmartUrl = null;
   if (data.asin === '') data.asin = null;
-  if (data.subcategory === '') data.subcategory = null;
+  delete data.subcategory;
 
   const imageUrls = collectImageUrls(payload);
 
@@ -119,6 +119,16 @@ const getAllProduct = async (query: Record<string, any>, role?: string) => {
     andConditions.push({ isDeal: true });
     delete filtersData.isDeal;
   }
+  if (
+    filtersData.isFeatured === 'true' ||
+    filtersData.isFeatured === true ||
+    filtersData.featured === 'true' ||
+    filtersData.featured === true
+  ) {
+    andConditions.push({ isFeatured: true });
+    delete filtersData.isFeatured;
+    delete filtersData.featured;
+  }
 
   const priceField = role === 'wholesale' ? 'wholesalePrice' : 'retailPrice';
   if (minPrice || maxPrice) {
@@ -169,6 +179,110 @@ const getAllProduct = async (query: Record<string, any>, role?: string) => {
   };
 };
 
+const getMostSoldProducts = async (
+  take: number,
+  excludeIds: string[] = [],
+) => {
+  if (take <= 0) return [];
+
+  const sales = await prisma.orderItem.groupBy({
+    by: ['productId'],
+    ...(excludeIds.length
+      ? { where: { productId: { notIn: excludeIds } } }
+      : {}),
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: 'desc' } },
+    take: take * 3,
+  });
+
+  const soldIds = sales.map(row => row.productId);
+  if (soldIds.length === 0) {
+    return prisma.product.findMany({
+      where: {
+        isDeleted: false,
+        status: ProductStatus.active,
+        ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
+      },
+      take,
+      orderBy: [{ createdAt: 'desc' }],
+      include: productInclude,
+    });
+  }
+
+  const products = await prisma.product.findMany({
+    where: {
+      id: { in: soldIds },
+      isDeleted: false,
+      status: ProductStatus.active,
+    },
+    include: productInclude,
+  });
+
+  const byId = new Map(products.map(product => [product.id, product]));
+  const ordered = soldIds
+    .map(id => byId.get(id))
+    .filter((product): product is NonNullable<typeof product> => Boolean(product))
+    .slice(0, take);
+
+  if (ordered.length >= take) return ordered;
+
+  const more = await prisma.product.findMany({
+    where: {
+      isDeleted: false,
+      status: ProductStatus.active,
+      id: {
+        notIn: [...excludeIds, ...ordered.map(product => product.id)],
+      },
+    },
+    take: take - ordered.length,
+    orderBy: [{ createdAt: 'desc' }],
+    include: productInclude,
+  });
+
+  return [...ordered, ...more];
+};
+
+const getFeaturedProducts = async (
+  query: Record<string, any> = {},
+  role?: string,
+) => {
+  const target = Math.min(Math.max(Number(query.limit) || 8, 1), 24);
+  const baseWhere: Prisma.ProductWhereInput = {
+    isDeleted: false,
+    status: ProductStatus.active,
+  };
+
+  const featured = await prisma.product.findMany({
+    where: { ...baseWhere, isFeatured: true },
+    take: target,
+    orderBy: [{ createdAt: 'desc' }],
+    include: productInclude,
+  });
+
+  const remaining = target - featured.length;
+  const bestsellers =
+    remaining > 0
+      ? await getMostSoldProducts(
+          remaining,
+          featured.map(product => product.id),
+        )
+      : [];
+
+  const combined = [...featured, ...bestsellers];
+  const source =
+    featured.length === 0
+      ? ('fallback' as const)
+      : bestsellers.length > 0
+        ? ('mixed' as const)
+        : ('featured' as const);
+
+  return {
+    data: combined.map(item => withDisplayPrice(item, role)),
+    meta: { page: 1, limit: target, total: combined.length },
+    source,
+  };
+};
+
 const getProductById = async (id: string, role?: string) => {
   const result = await prisma.product.findUnique({
     where: { id },
@@ -209,7 +323,7 @@ const updateProduct = async (id: string, payload: any) => {
   if (data.amazonUrl === '') data.amazonUrl = null;
   if (data.walmartUrl === '') data.walmartUrl = null;
   if (data.asin === '') data.asin = null;
-  if (data.subcategory === '') data.subcategory = null;
+  delete data.subcategory;
 
   if (replaceImages) {
     await prisma.productImage.deleteMany({ where: { productId: id } });
@@ -252,6 +366,7 @@ const deleteProduct = async (id: string) => {
 export const productService = {
   createProduct,
   getAllProduct,
+  getFeaturedProducts,
   getProductById,
   updateProduct,
   deleteProduct,

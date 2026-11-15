@@ -1,11 +1,8 @@
 import { z } from 'zod';
 
 const bannerSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
   image: z.string().min(1, 'Image is required'),
-  subtitle: z.string().optional(),
-  link: z.string().optional(),
-  position: z.coerce.number().int().nonnegative().optional(),
+  link: z.string().optional().nullable(),
   isActive: z.coerce.boolean().optional(),
 });
 

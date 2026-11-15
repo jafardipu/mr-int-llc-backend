@@ -129,6 +129,8 @@ const checkout = async (
             userId,
             amount: total,
             status: 'pending',
+            // MongoDB unique index treats multiple null transactionId as duplicates.
+            transactionId: `PENDING-${generateCryptoString(16)}`,
           },
         },
       },

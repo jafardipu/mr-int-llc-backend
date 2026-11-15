@@ -24,6 +24,24 @@ const getAllProduct = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getFeaturedProducts = catchAsync(async (req: Request, res: Response) => {
+  const result = await productService.getFeaturedProducts(
+    req.query,
+    req.user?.role,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message:
+      result.source === 'featured'
+        ? 'Featured products fetched successfully'
+        : result.source === 'mixed'
+          ? 'Featured products fetched; filled with bestsellers'
+          : 'No featured products found; returning bestsellers',
+    data: result,
+  });
+});
+
 const getProductById = catchAsync(async (req: Request, res: Response) => {
   const result = await productService.getProductById(
     req.params.id as string,
@@ -63,6 +81,7 @@ const deleteProduct = catchAsync(async (req: Request, res: Response) => {
 export const productController = {
   createProduct,
   getAllProduct,
+  getFeaturedProducts,
   getProductById,
   updateProduct,
   deleteProduct,

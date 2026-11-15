@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import type { Request, Response } from 'express';
 import catchAsync from '@app/utils/catchAsync.js';
 import sendResponse from '@app/utils/sendResponse.js';
+import { DealType } from '../../../../generated/prisma/index.js';
 import { dealService } from './deal.service.js';
 
 const createDeal = catchAsync(async (req: Request, res: Response) => {
@@ -20,6 +21,47 @@ const getAllDeal = catchAsync(async (req: Request, res: Response) => {
     statusCode: httpStatus.OK,
     success: true,
     message: 'All deal fetched successfully',
+    data: result,
+  });
+});
+
+const getWeeklyDeals = catchAsync(async (req: Request, res: Response) => {
+  const result = await dealService.getDealsByType(
+    DealType.weekly,
+    req.query,
+    req.user?.role,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Weekly deals fetched successfully',
+    data: result,
+  });
+});
+
+const getClearanceDeals = catchAsync(async (req: Request, res: Response) => {
+  const result = await dealService.getDealsByType(
+    DealType.clearance,
+    req.query,
+    req.user?.role,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Clearance deals fetched successfully',
+    data: result,
+  });
+});
+
+const getDealSections = catchAsync(async (req: Request, res: Response) => {
+  const result = await dealService.getDealSections(
+    req.query,
+    req.user?.role,
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Deal sections fetched successfully',
     data: result,
   });
 });
@@ -60,6 +102,9 @@ const deleteDeal = catchAsync(async (req: Request, res: Response) => {
 export const dealController = {
   createDeal,
   getAllDeal,
+  getWeeklyDeals,
+  getClearanceDeals,
+  getDealSections,
   getDealById,
   updateDeal,
   deleteDeal,

@@ -182,10 +182,9 @@ async function main() {
       if (!existingDeal) {
         await prisma.deal.create({
           data: {
-            title: 'Wireless Headphones Deal',
-            description: 'Limited-time storefront deal.',
             productId: dealProduct.id,
             dealPrice: 74.99,
+            type: 'weekly',
             isActive: true,
           },
         });
@@ -194,16 +193,16 @@ async function main() {
   }
 
   const existingBanner = await prisma.banner.findFirst({
-    where: { title: 'Wholesale Ready Inventory' },
+    where: {
+      image: 'https://placehold.co/1400x500?text=MR+International',
+      isDeleted: false,
+    },
   });
   if (!existingBanner) {
     await prisma.banner.create({
       data: {
-        title: 'Wholesale Ready Inventory',
-        subtitle: 'Retail and wholesale pricing on every product.',
         image: 'https://placehold.co/1400x500?text=MR+International',
         link: '/products',
-        position: 1,
         isActive: true,
       },
     });

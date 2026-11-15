@@ -10,6 +10,7 @@ const checkout = catchAsync(async (req: Request, res: Response) => {
     req.user.role,
     req.body,
   );
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,

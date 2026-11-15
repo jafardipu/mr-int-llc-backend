@@ -20,7 +20,7 @@ const getAllBanner = async (query: Record<string, any>, publicOnly = false) => {
   const where: Prisma.BannerWhereInput = {};
 
   if (searchTerm) {
-    where.OR = ['title', 'subtitle'].map(field => ({
+    where.OR = ['link', 'image'].map(field => ({
       [field]: { contains: searchTerm },
     }));
   }
@@ -40,7 +40,7 @@ const getAllBanner = async (query: Record<string, any>, publicOnly = false) => {
         if (trimmed.startsWith('-')) return { [trimmed.slice(1)]: 'desc' };
         return { [trimmed]: 'asc' };
       })
-    : [{ position: 'asc' }, { createdAt: 'desc' }];
+    : [{ createdAt: 'desc' }];
 
   const data = await prisma.banner.findMany({
     where,

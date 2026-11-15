@@ -32,6 +32,7 @@ router.patch(
   productController.updateProduct,
 );
 router.delete('/:id', auth(...ADMIN_ROLES), productController.deleteProduct);
+router.get('/featured', optionalAuth, productController.getFeaturedProducts);
 router.get('/:id', optionalAuth, productController.getProductById);
 router.get('/', optionalAuth, productController.getAllProduct);
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "MR International LLC Ecommerce API",
     "version": "1.0.0",
-    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **98**"
+    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **102**"
   },
   "servers": [
     {
@@ -1816,6 +1816,22 @@
                 "out_of_stock"
               ]
             }
+          },
+          {
+            "name": "isFeatured",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "deal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1885,9 +1901,6 @@
                   "categoryId": {
                     "type": "string"
                   },
-                  "subcategory": {
-                    "type": "string"
-                  },
                   "asin": {
                     "type": "string"
                   },
@@ -1899,6 +1912,15 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "isFeatured": {
+                    "type": "boolean"
+                  },
+                  "isDeal": {
+                    "type": "boolean"
+                  },
+                  "dealPrice": {
+                    "type": "number"
                   },
                   "status": {
                     "type": "string",
@@ -1924,6 +1946,56 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/products/featured": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Homepage featured products (fills to limit with bestsellers by order quantity when fewer than limit featured)",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Target count (default 8, max 24). Missing slots filled by most-sold products.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success envelope",
@@ -3066,7 +3138,217 @@
         "tags": [
           "Deals"
         ],
-        "summary": "List deals",
+        "summary": "List deals (filter with type=weekly|clearance)",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number (default 1)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size (default 10)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "searchTerm",
+            "in": "query",
+            "required": false,
+            "description": "Free-text search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "weekly",
+                "clearance"
+              ]
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Create deal (admin) — uses product images; no title/description/image",
+        "description": "Roles: admin, supper_admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "string"
+                  },
+                  "dealPrice": {
+                    "type": "number"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "weekly",
+                      "clearance"
+                    ]
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/deals/sections": {
+      "get": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "Homepage deal sections (weekly + clearance)",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Per-section limit (default 8)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/deals/weekly": {
+      "get": {
+        "tags": [
+          "Deals"
+        ],
+        "summary": "List Weekly Deals",
         "description": "",
         "security": [
           {
@@ -3127,29 +3409,50 @@
             "description": "Not found"
           }
         }
-      },
-      "post": {
+      }
+    },
+    "/deals/clearance": {
+      "get": {
         "tags": [
           "Deals"
         ],
-        "summary": "Create deal (admin)",
-        "description": "Roles: admin, supper_admin\n\nContent-Type: multipart/form-data",
+        "summary": "List Clearance Deals",
+        "description": "",
         "security": [
           {
             "bearerAuth": []
-          }
+          },
+          {}
         ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {}
-              }
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number (default 1)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size (default 10)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "searchTerm",
+            "in": "query",
+            "required": false,
+            "description": "Free-text search",
+            "schema": {
+              "type": "string"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "Success envelope",
@@ -3231,7 +3534,7 @@
           "Deals"
         ],
         "summary": "Update deal (admin)",
-        "description": "Roles: admin, supper_admin\n\nContent-Type: multipart/form-data",
+        "description": "Roles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -3249,17 +3552,6 @@
             }
           }
         ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {}
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Success envelope",
