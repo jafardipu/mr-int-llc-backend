@@ -9,19 +9,44 @@ const createPayment = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Payment intent created successfully',
+    message: 'Checkout session created successfully',
     data: result,
   });
 });
 
 const confirmPayment = catchAsync(async (req: Request, res: Response) => {
+  // `session_id` is the name Stripe uses in the success URL; paymentIntentId is
+  // kept for payments started with the old PaymentIntent flow.
+  const id =
+    req.query.sessionId ??
+    req.query.session_id ??
+    req.query.paymentIntentId ??
+    req.body?.sessionId ??
+    req.body?.paymentIntentId;
   const result = await paymentService.confirmPayment(
-    (req.query.paymentIntentId || req.body.paymentIntentId) as string,
+    typeof id === 'string' ? id : undefined,
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Payment confirmed successfully',
+    message:
+      result.status === 'paid'
+        ? 'Payment confirmed successfully'
+        : `Payment is ${result.status}`,
+    data: result,
+  });
+});
+
+// Stripe calls this endpoint; it must stay public and unauthenticated.
+const stripeWebhook = catchAsync(async (req: Request, res: Response) => {
+  const result = await paymentService.handleWebhook(
+    req.rawBody,
+    req.get('stripe-signature'),
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Webhook received',
     data: result,
   });
 });
@@ -49,6 +74,7 @@ const getPaymentById = catchAsync(async (req: Request, res: Response) => {
 export const paymentController = {
   createPayment,
   confirmPayment,
+  stripeWebhook,
   getAllPayments,
   getPaymentById,
 };

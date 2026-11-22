@@ -15,7 +15,8 @@ const calculatePagination = (options: IOptions): IOptionResult => {
   const page = Number(options?.page) || 1;
   const limit = Number(options?.limit) || 10;
   const skip = Number((page - 1) * limit);
-  const sort = options?.sort || 'createdAt';
+  // Empty means "use the service's default ordering".
+  const sort = options?.sort || '';
 
   return {
     page,

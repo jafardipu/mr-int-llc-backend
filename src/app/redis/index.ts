@@ -43,6 +43,16 @@ const notificationQueue = new Queue('general_notification', {
   },
 });
 
+const ORDER_QUEUE_NAME = 'order_maintenance';
+
+const orderQueue = new Queue(ORDER_QUEUE_NAME, {
+  connection,
+  defaultJobOptions: {
+    removeOnComplete: true,
+    removeOnFail: 50,
+  },
+});
+
 const initRedisSubscriptions = (io: Server) => {
   subClient.subscribe('new_notification_channel', async rawMessage => {
     try {
@@ -68,5 +78,7 @@ export {
   connectRedis,
   initRedisSubscriptions,
   notificationQueue,
+  orderQueue,
+  ORDER_QUEUE_NAME,
   connection,
 };

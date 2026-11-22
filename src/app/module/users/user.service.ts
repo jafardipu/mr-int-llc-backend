@@ -130,7 +130,7 @@ const getAll = async (query: Record<string, any>) => {
   const { page, limit, skip, sort } =
     paginationHelper.calculatePagination(pagination);
 
-  let sortArray: Prisma.UserOrderByWithRelationInput[] = [];
+  let sortArray: Prisma.UserOrderByWithRelationInput[] = [{ createdAt: 'asc' }];
   if (sort) {
     sortArray = sort.split(',').map(field => {
       const trimmedField = field.trim();

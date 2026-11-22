@@ -6,12 +6,19 @@ import initializeSocket from '@app/socket/index.js';
 import { defaultTask } from '@app/utils/defaultTask.js';
 import { connectRedis } from '@app/redis/index.js';
 import '@app/workers/notification.worker.js';
+import { scheduleOrderJobs } from '@app/workers/order.worker.js';
 
 const socketServer = createServer(app);
 let server: Server;
 
 const startRedis = () =>
   connectRedis().then(() => console.log(colors.blue.bold('✨ Redis ready')));
+
+// Background jobs are not critical for serving requests, so a failure is logged only.
+const startOrderJobs = () =>
+  scheduleOrderJobs().catch(error =>
+    console.error(colors.red('Order job scheduling failed:'), error),
+  );
 
 const startSocket = () =>
   initializeSocket(socketServer).then(io => {
@@ -51,6 +58,7 @@ const shutdown = (reason: string) => (err?: unknown) => {
 };
 
 startRedis()
+  .then(startOrderJobs)
   .then(startSocket)
   .then(startHttpServer)
   .then(s => {

@@ -7,12 +7,18 @@ import { orderValidation } from './order.validation.js';
 
 const router: Router = Router();
 
+router.get(
+  '/checkout-summary',
+  auth(...CUSTOMER_ROLES),
+  orderController.getCheckoutSummary,
+);
 router.post(
   '/checkout',
   auth(...CUSTOMER_ROLES),
   validateRequest(orderValidation.checkout),
   orderController.checkout,
 );
+router.patch('/:id/cancel', auth(...CUSTOMER_ROLES), orderController.cancelMyOrder);
 router.patch(
   '/:id/status',
   auth(...ADMIN_ROLES),
@@ -20,6 +26,8 @@ router.patch(
   orderController.updateOrderStatus,
 );
 router.get('/my-orders', auth(...CUSTOMER_ROLES), orderController.getMyOrders);
+// AUTH_ROLES so admins reach the controller and get 403 instead of 401.
+router.get('/my-dashboard', auth(...AUTH_ROLES), orderController.getMyDashboard);
 router.get('/', auth(...ADMIN_ROLES), orderController.getAllOrders);
 router.get('/:id', auth(...AUTH_ROLES), orderController.getOrderById);
 

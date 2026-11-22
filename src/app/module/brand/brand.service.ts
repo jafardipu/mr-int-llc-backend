@@ -63,7 +63,7 @@ const getAllBrand = async (query: Record<string, any>) => {
         if (trimmed.startsWith('-')) return { [trimmed.slice(1)]: 'desc' };
         return { [trimmed]: 'asc' };
       })
-    : [];
+    : [{ createdAt: 'asc' }];
 
   const data = await prisma.brand.findMany({ where, skip, take: limit, orderBy });
   const total = await prisma.brand.count({ where });

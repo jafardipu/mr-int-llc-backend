@@ -255,11 +255,11 @@ const applyPromoForCheckout = async (params: {
   userId: string;
   role: string;
   subtotal: number;
-  manualDiscount?: number;
 }) => {
+  // The only way to get a discount is a valid promo code.
   if (!params.code?.trim()) {
     return {
-      discount: Number(params.manualDiscount || 0),
+      discount: 0,
       promoCodeId: null as string | null,
       promoCode: null as string | null,
       promo: null as PromoCode | null,

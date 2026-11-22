@@ -60,8 +60,15 @@ const objectId = {
 const paginationQuery = {
   page: { type: 'integer', description: 'Page number (default 1)' },
   limit: { type: 'integer', description: 'Page size (default 10)' },
+  sort: {
+    type: 'string',
+    description:
+      'Comma-separated fields; prefix with "-" for descending (e.g. -createdAt). Default depends on the endpoint.',
+  },
   searchTerm: { type: 'string', description: 'Free-text search' },
 };
+
+const orderStatusEnum = ['pending', 'processing', 'completed', 'cancelled'];
 
 const ops: Op[] = [
   // Auth
@@ -541,6 +548,23 @@ const ops: Op[] = [
 
   // Orders
   {
+    method: 'get',
+    path: '/orders/checkout-summary',
+    summary: 'Price the current cart (subtotal, discount, shipping, tax, total)',
+    tags: ['Orders'],
+    auth: 'bearer',
+    roles: 'retail, wholesale',
+    description:
+      'Uses exactly the same calculation as checkout, so the total shown here is the amount that will be charged. Returns 400 with a readable message for an invalid promo code, an empty cart, insufficient stock or a wholesale minimum quantity.',
+    query: {
+      promoCode: {
+        type: 'string',
+        example: 'WELCOME10',
+        description: 'Optional promo code to apply',
+      },
+    },
+  },
+  {
     method: 'post',
     path: '/orders/checkout',
     summary: 'Checkout cart into an order',
@@ -548,16 +572,10 @@ const ops: Op[] = [
     auth: 'bearer',
     roles: 'retail, wholesale',
     description:
-      'Creates an order from the authenticated user cart. When `promoCode` is provided it is validated and applied; the resulting discount is stored on the order and a redemption is recorded. Manual `discount` is only used when no promo code is sent.',
+      'Creates a `pending` order from the cart, reserves stock and empties the cart. All amounts are calculated on the server (shipping and tax come from server configuration); price fields sent by the client are ignored. Then call `POST /payments/create` with the returned order id.',
     body: {
       addressId: { type: 'string' },
       notes: { type: 'string' },
-      shippingFee: { type: 'number' },
-      tax: { type: 'number' },
-      discount: {
-        type: 'number',
-        description: 'Manual discount fallback when promoCode is omitted',
-      },
       promoCode: {
         type: 'string',
         example: 'WELCOME10',
@@ -572,7 +590,32 @@ const ops: Op[] = [
     tags: ['Orders'],
     auth: 'bearer',
     roles: 'retail, wholesale',
-    query: paginationQuery,
+    description: 'Newest first by default.',
+    query: {
+      ...paginationQuery,
+      status: { type: 'string', enum: orderStatusEnum },
+    },
+  },
+  {
+    method: 'get',
+    path: '/orders/my-dashboard',
+    summary: 'My dashboard: order counts and the 5 latest orders',
+    tags: ['Orders'],
+    auth: 'bearer',
+    roles: 'retail, wholesale',
+    description:
+      'Returns `{ stats: { totalOrders, activeOrders }, recentOrders: [...] }`. `activeOrders` counts `pending` and `processing` orders. `recentOrders` holds at most 5 orders of any status, newest first, each with `id`, `orderNumber`, `createdAt`, `status`, `paymentStatus` (null when payment was never started), `total`, `itemCount` (sum of quantities), `image` (first item\'s primary image, or null) and `firstItemName`. With no orders it returns 0, 0 and []. Admin roles get 403.',
+  },
+  {
+    method: 'patch',
+    path: '/orders/{id}/cancel',
+    summary: 'Cancel my unpaid order',
+    tags: ['Orders'],
+    auth: 'bearer',
+    roles: 'retail, wholesale',
+    pathParams: ['id'],
+    description:
+      'Only `pending` (unpaid) orders can be cancelled by the customer. Voids the open Stripe payment, returns items to stock and gives the promo code use back.',
   },
   {
     method: 'get',
@@ -606,10 +649,12 @@ const ops: Op[] = [
     auth: 'bearer',
     roles: 'admin, supper_admin',
     pathParams: ['id'],
+    description:
+      'Setting `cancelled` refunds a paid order through Stripe (or voids an unpaid one), returns items to stock and gives the promo code use back. Cancelled orders cannot be reopened.',
     body: {
       status: {
         type: 'string',
-        enum: ['pending', 'processing', 'completed', 'cancelled'],
+        enum: orderStatusEnum,
       },
     },
   },
@@ -618,25 +663,46 @@ const ops: Op[] = [
   {
     method: 'post',
     path: '/payments/create',
-    summary: 'Create Stripe payment intent for order',
+    summary: 'Create Stripe Checkout Session for order',
     tags: ['Payments'],
     auth: 'bearer',
     roles: 'retail, wholesale',
+    description:
+      'Returns `{ checkoutUrl, sessionId, payment }`. Redirect the customer to `checkoutUrl` (Stripe-hosted page). After paying, Stripe redirects to `CLIENT_URL/checkout/success?session_id={id}&orderId={orderId}`; on cancel to `CLIENT_URL/checkout/cancel?orderId={orderId}`. Calling it again for the same order returns the same open session. Fails for cancelled or already paid orders.',
     body: {
       orderId: { type: 'string' },
       paymentMethod: { type: 'string' },
     },
   },
   {
-    method: 'get',
-    path: '/payments/confirm-payment',
-    summary: 'Confirm payment via Stripe paymentIntentId query',
+    method: 'post',
+    path: '/payments/webhook',
+    summary: 'Stripe webhook (called by Stripe, not by clients)',
     tags: ['Payments'],
-    query: {
-      paymentIntentId: {
+    description:
+      'Verifies the `Stripe-Signature` header with STRIPE_WEBHOOK_SECRET and handles `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `payment_intent.succeeded`. Configure it in the Stripe Dashboard → Developers → Webhooks.',
+    headers: {
+      'stripe-signature': {
         type: 'string',
         required: true,
-        description: 'Stripe payment intent id',
+        description: 'Signature header set by Stripe',
+      },
+    },
+  },
+  {
+    method: 'get',
+    path: '/payments/confirm-payment',
+    summary: 'Confirm payment after returning from Stripe Checkout',
+    tags: ['Payments'],
+    description:
+      'Call from the success page with the `session_id` Stripe added to the URL. Marks the payment `paid` and the order `processing` when the session is paid; otherwise returns the payment with its current status (`data.status`). Safe to call more than once.',
+    query: {
+      sessionId: {
+        type: 'string',
+        required: true,
+        example: 'cs_test_a1b2c3',
+        description:
+          'Stripe Checkout Session id (`session_id` is also accepted). A `paymentIntentId` from the old flow also works.',
       },
     },
   },

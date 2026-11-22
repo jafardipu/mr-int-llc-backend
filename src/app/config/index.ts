@@ -12,6 +12,21 @@ const aws = {
 const stripe = {
   stripe_api_key: process.env.STRIPE_API_KEY,
   stripe_api_secret: process.env.STRIPE_API_SECRET,
+  webhook_secret: process.env.STRIPE_WEBHOOK_SECRET,
+};
+
+const toNumber = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+const checkout = {
+  // Flat shipping fee in USD added to every order.
+  shipping_fee: toNumber(process.env.SHIPPING_FEE, 0),
+  // Tax percentage applied to (subtotal - discount), e.g. 8.25.
+  tax_rate: toNumber(process.env.TAX_RATE, 0),
+  // Unpaid orders older than this are cancelled automatically. 0 disables it.
+  unpaid_order_expiry_hours: toNumber(process.env.UNPAID_ORDER_EXPIRY_HOURS, 0),
 };
 
 const admin_credentials = {
@@ -38,5 +53,6 @@ export default {
   socket_port: process.env.SOCKET_PORT,
   aws,
   stripe,
+  checkout,
   admin_credentials,
 };

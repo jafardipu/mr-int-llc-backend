@@ -1,12 +1,6 @@
 import config from '@app/config/index.js';
 import { Stripe as StripeType } from 'stripe';
 
-interface IProducts {
-  amount: number;
-  name: string;
-  quantity: number;
-}
-
 class StripeServices {
   private stripe() {
     return new StripeType(config.stripe.stripe_api_secret as string, {
@@ -53,6 +47,27 @@ class StripeServices {
     }
   }
 
+  public async cancelPaymentIntent(paymentIntentId: string) {
+    try {
+      return await this.stripe().paymentIntents.cancel(paymentIntentId);
+    } catch (error) {
+      this.handleError(error, 'Error cancelling payment intent');
+    }
+  }
+
+  // Throws when the signature does not match the webhook secret.
+  public constructWebhookEvent(
+    rawBody: Buffer,
+    signature: string,
+    webhookSecret: string,
+  ) {
+    return this.stripe().webhooks.constructEvent(
+      rawBody,
+      signature,
+      webhookSecret,
+    );
+  }
+
   public async refund(payment_intent: string, amount?: number) {
     try {
       if (amount) {
@@ -69,41 +84,30 @@ class StripeServices {
     }
   }
 
-  public async getCheckoutSession(
-    product: IProducts,
-    success_url: string,
-    cancel_url: string,
-    customer: string = '',
-    currency: string = 'usd',
-    payment_method_types: Array<'card' | 'paypal' | 'ideal'> = ['card'],
+  public async createCheckoutSession(
+    params: StripeType.Checkout.SessionCreateParams,
   ) {
     try {
-      if (!product?.name || !product?.amount || !product?.quantity) {
-        throw new Error('Product details are incomplete.');
-      }
-      const stripe = this.stripe();
-
-      return await stripe.checkout.sessions.create({
-        line_items: [
-          {
-            price_data: {
-              currency,
-              product_data: {
-                name: product?.name,
-              },
-              unit_amount: parseFloat((product?.amount * 100).toFixed(2)),
-            },
-            quantity: product?.quantity,
-          },
-        ],
-        success_url: success_url,
-        cancel_url: cancel_url,
-        mode: 'payment',
-        customer,
-        payment_method_types,
-      });
+      return await this.stripe().checkout.sessions.create(params);
     } catch (error) {
       this.handleError(error, 'Error creating checkout session');
+    }
+  }
+
+  public async retrieveCheckoutSession(sessionId: string) {
+    try {
+      return await this.stripe().checkout.sessions.retrieve(sessionId);
+    } catch (error) {
+      this.handleError(error, 'Error retrieving checkout session');
+    }
+  }
+
+  // Closes an open session so the customer can no longer pay through it.
+  public async expireCheckoutSession(sessionId: string) {
+    try {
+      return await this.stripe().checkout.sessions.expire(sessionId);
+    } catch (error) {
+      this.handleError(error, 'Error expiring checkout session');
     }
   }
 

@@ -79,7 +79,7 @@ const getAllCategory = async (query: Record<string, any>) => {
         }
         return { [trimmed]: 'asc' };
       })
-    : [];
+    : [{ createdAt: 'asc' }];
 
   const data = await prisma.category.findMany({
     where,

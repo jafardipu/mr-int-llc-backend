@@ -3,7 +3,7 @@
   "info": {
     "title": "MR International LLC Ecommerce API",
     "version": "1.0.0",
-    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **102**"
+    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **106**"
   },
   "servers": [
     {
@@ -781,6 +781,15 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -1229,6 +1238,15 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -1505,6 +1523,15 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -1777,6 +1804,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -2526,13 +2562,63 @@
         }
       }
     },
+    "/orders/checkout-summary": {
+      "get": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Price the current cart (subtotal, discount, shipping, tax, total)",
+        "description": "Uses exactly the same calculation as checkout, so the total shown here is the amount that will be charged. Returns 400 with a readable message for an invalid promo code, an empty cart, insufficient stock or a wholesale minimum quantity.\n\nRoles: retail, wholesale",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "promoCode",
+            "in": "query",
+            "required": false,
+            "description": "Optional promo code to apply",
+            "schema": {
+              "type": "string",
+              "example": "WELCOME10"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/orders/checkout": {
       "post": {
         "tags": [
           "Orders"
         ],
         "summary": "Checkout cart into an order",
-        "description": "Creates an order from the authenticated user cart. When `promoCode` is provided it is validated and applied; the resulting discount is stored on the order and a redemption is recorded. Manual `discount` is only used when no promo code is sent.\n\nRoles: retail, wholesale",
+        "description": "Creates a `pending` order from the cart, reserves stock and empties the cart. All amounts are calculated on the server (shipping and tax come from server configuration); price fields sent by the client are ignored. Then call `POST /payments/create` with the returned order id.\n\nRoles: retail, wholesale",
         "security": [
           {
             "bearerAuth": []
@@ -2550,16 +2636,6 @@
                   },
                   "notes": {
                     "type": "string"
-                  },
-                  "shippingFee": {
-                    "type": "number"
-                  },
-                  "tax": {
-                    "type": "number"
-                  },
-                  "discount": {
-                    "type": "number",
-                    "description": "Manual discount fallback when promoCode is omitted"
                   },
                   "promoCode": {
                     "type": "string",
@@ -2603,7 +2679,7 @@
           "Orders"
         ],
         "summary": "List my orders",
-        "description": "Roles: retail, wholesale",
+        "description": "Newest first by default.\n\nRoles: retail, wholesale",
         "security": [
           {
             "bearerAuth": []
@@ -2629,12 +2705,123 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
             "description": "Free-text search",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "completed",
+                "cancelled"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/orders/my-dashboard": {
+      "get": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "My dashboard: order counts and the 5 latest orders",
+        "description": "Returns `{ stats: { totalOrders, activeOrders }, recentOrders: [...] }`. `activeOrders` counts `pending` and `processing` orders. `recentOrders` holds at most 5 orders of any status, newest first, each with `id`, `orderNumber`, `createdAt`, `status`, `paymentStatus` (null when payment was never started), `total`, `itemCount` (sum of quantities), `image` (first item's primary image, or null) and `firstItemName`. With no orders it returns 0, 0 and []. Admin roles get 403.\n\nRoles: retail, wholesale",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/orders/{id}/cancel": {
+      "patch": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Cancel my unpaid order",
+        "description": "Only `pending` (unpaid) orders can be cancelled by the customer. Voids the open Stripe payment, returns items to stock and gives the promo code use back.\n\nRoles: retail, wholesale",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "MongoDB ObjectId",
+              "example": "66f000000000000000000001"
             }
           }
         ],
@@ -2693,6 +2880,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -2813,7 +3009,7 @@
           "Orders"
         ],
         "summary": "Update order fulfillment status (admin)",
-        "description": "Roles: admin, supper_admin",
+        "description": "Setting `cancelled` refunds a paid order through Stripe (or voids an unpaid one), returns items to stock and gives the promo code use back. Cancelled orders cannot be reopened.\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -2883,8 +3079,8 @@
         "tags": [
           "Payments"
         ],
-        "summary": "Create Stripe payment intent for order",
-        "description": "Roles: retail, wholesale",
+        "summary": "Create Stripe Checkout Session for order",
+        "description": "Returns `{ checkoutUrl, sessionId, payment }`. Redirect the customer to `checkoutUrl` (Stripe-hosted page). After paying, Stripe redirects to `CLIENT_URL/checkout/success?session_id={id}&orderId={orderId}`; on cancel to `CLIENT_URL/checkout/cancel?orderId={orderId}`. Calling it again for the same order returns the same open session. Fails for cancelled or already paid orders.\n\nRoles: retail, wholesale",
         "security": [
           {
             "bearerAuth": []
@@ -2934,21 +3130,66 @@
         }
       }
     },
+    "/payments/webhook": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Stripe webhook (called by Stripe, not by clients)",
+        "description": "Verifies the `Stripe-Signature` header with STRIPE_WEBHOOK_SECRET and handles `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `payment_intent.succeeded`. Configure it in the Stripe Dashboard → Developers → Webhooks.",
+        "parameters": [
+          {
+            "name": "stripe-signature",
+            "in": "header",
+            "required": true,
+            "description": "Signature header set by Stripe",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/payments/confirm-payment": {
       "get": {
         "tags": [
           "Payments"
         ],
-        "summary": "Confirm payment via Stripe paymentIntentId query",
-        "description": "",
+        "summary": "Confirm payment after returning from Stripe Checkout",
+        "description": "Call from the success page with the `session_id` Stripe added to the URL. Marks the payment `paid` and the order `processing` when the session is paid; otherwise returns the payment with its current status (`data.status`). Safe to call more than once.",
         "parameters": [
           {
-            "name": "paymentIntentId",
+            "name": "sessionId",
             "in": "query",
             "required": true,
-            "description": "Stripe payment intent id",
+            "description": "Stripe Checkout Session id (`session_id` is also accepted). A `paymentIntentId` from the old flow also works.",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "cs_test_a1b2c3"
             }
           }
         ],
@@ -3007,6 +3248,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -3163,6 +3413,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -3376,6 +3635,15 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -3441,6 +3709,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -3719,6 +3996,16 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with - for desc (e.g. -createdAt)",
+            "schema": {
+              "type": "string",
+              "example": "-createdAt"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -3747,16 +4034,6 @@
                 "retail",
                 "wholesale"
               ]
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "description": "Comma-separated fields; prefix with - for desc (e.g. -createdAt)",
-            "schema": {
-              "type": "string",
-              "example": "-createdAt"
             }
           }
         ],
@@ -4160,6 +4437,15 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -4487,6 +4773,15 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "searchTerm",
             "in": "query",
             "required": false,
@@ -4564,6 +4859,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -4749,6 +5053,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -5084,6 +5397,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -5634,6 +5956,15 @@
             "description": "Page size (default 10)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated fields; prefix with \"-\" for descending (e.g. -createdAt). Default depends on the endpoint.",
+            "schema": {
+              "type": "string"
             }
           },
           {

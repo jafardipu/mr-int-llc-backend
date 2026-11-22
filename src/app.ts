@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import express, {
   type Application,
   type Request,
+  type RequestHandler,
   type Response,
 } from 'express';
 import cors from 'cors';
@@ -24,10 +25,18 @@ if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 const isDocsPath = (path: string) =>
   path.startsWith('/api/docs') || path === '/api/docs.json';
 
+// Stripe retries webhooks it cannot deliver, so they are never rate limited.
+const unlessStripeWebhook =
+  (limiter: RequestHandler): RequestHandler =>
+  (req, res, next) =>
+    req.originalUrl.startsWith('/api/v1/payments/webhook')
+      ? next()
+      : limiter(req, res, next);
+
 app.use('/api/v1/auth', authRateLimiter);
 app.use('/api/v1/otp', authRateLimiter);
-app.use('/api/v1/payments', paymentRateLimiter);
-app.use('/api/v1', apiRateLimiter);
+app.use('/api/v1/payments', unlessStripeWebhook(paymentRateLimiter));
+app.use('/api/v1', unlessStripeWebhook(apiRateLimiter));
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');

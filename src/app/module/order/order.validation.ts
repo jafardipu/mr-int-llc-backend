@@ -1,12 +1,11 @@
 import { z } from 'zod';
 
+// Prices (discount, shipping, tax, total) are always calculated on the server.
+// Unknown fields such as a client-sent `discount` are stripped by zod.
 const checkout = z.object({
   body: z.object({
     addressId: z.string().min(1, 'Address is required'),
     notes: z.string().optional(),
-    shippingFee: z.coerce.number().nonnegative().optional(),
-    tax: z.coerce.number().nonnegative().optional(),
-    discount: z.coerce.number().nonnegative().optional(),
     promoCode: z.string().trim().min(1).optional(),
   }),
 });

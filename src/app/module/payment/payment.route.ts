@@ -14,6 +14,8 @@ router.post(
   paymentController.createPayment,
 );
 router.get('/confirm-payment', paymentController.confirmPayment);
+// Stripe webhook: signature-verified, no auth. Uses the raw body captured in app.ts.
+router.post('/webhook', paymentController.stripeWebhook);
 router.get('/', auth(...ADMIN_ROLES), paymentController.getAllPayments);
 router.get('/:id', auth(...ADMIN_ROLES), paymentController.getPaymentById);
 
