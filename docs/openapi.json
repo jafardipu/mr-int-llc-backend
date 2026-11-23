@@ -3,7 +3,7 @@
   "info": {
     "title": "MR International LLC Ecommerce API",
     "version": "1.0.0",
-    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **106**"
+    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **107**"
   },
   "servers": [
     {
@@ -4685,8 +4685,8 @@
         "tags": [
           "Prep Services"
         ],
-        "summary": "Create 3PL prep request (customer, multipart attachments)",
-        "description": "Roles: retail, wholesale\n\nContent-Type: multipart/form-data",
+        "summary": "Submit a prep request (customer, attachments only)",
+        "description": "multipart/form-data with 1-8 files in the `attachments` field (JPG, PNG, WEBP, PDF, CSV, XLS, XLSX; max 10 MB each). The request starts as `under_review`.\n\nRoles: retail, wholesale\n\nContent-Type: multipart/form-data",
         "security": [
           {
             "bearerAuth": []
@@ -4699,12 +4699,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "serviceType": {
-                    "type": "string"
-                  },
-                  "notes": {
-                    "type": "string"
-                  },
                   "attachments": {
                     "type": "array",
                     "items": {
@@ -4747,7 +4741,7 @@
           "Prep Services"
         ],
         "summary": "List all prep requests (admin)",
-        "description": "Roles: admin, supper_admin",
+        "description": "Newest first by default. `searchTerm` matches the customer name or email. Use `status=under_review&sort=updatedAt` for a review queue (longest waiting first).\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -4802,8 +4796,86 @@
                 "completed"
               ]
             }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": false,
+            "description": "Only this customer",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/prep-services/{id}/resubmit": {
+      "patch": {
+        "tags": [
+          "Prep Services"
+        ],
+        "summary": "Resubmit attachments after a correction request (customer)",
+        "description": "Only when the request is `correction_required`. Replaces all attachments (same file rules as create) and moves the request back to `under_review`. `adminNote` is kept so the admin sees what was asked.\n\nRoles: retail, wholesale\n\nContent-Type: multipart/form-data",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "MongoDB ObjectId",
+              "example": "66f000000000000000000001"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success envelope",
@@ -4836,7 +4908,7 @@
           "Prep Services"
         ],
         "summary": "List my prep requests",
-        "description": "Roles: retail, wholesale",
+        "description": "Newest first by default.\n\nRoles: retail, wholesale",
         "security": [
           {
             "bearerAuth": []
@@ -4871,12 +4943,16 @@
             }
           },
           {
-            "name": "searchTerm",
+            "name": "status",
             "in": "query",
             "required": false,
-            "description": "Free-text search",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "under_review",
+                "correction_required",
+                "completed"
+              ]
             }
           }
         ],
@@ -4911,7 +4987,7 @@
         "tags": [
           "Prep Services"
         ],
-        "summary": "Get prep request by id",
+        "summary": "Get prep request by id (owner or admin)",
         "description": "",
         "security": [
           {
@@ -4961,8 +5037,8 @@
         "tags": [
           "Prep Services"
         ],
-        "summary": "Update prep request status (admin)",
-        "description": "Roles: admin, supper_admin",
+        "summary": "Review a prep request: approve or request correction (admin)",
+        "description": "Only for requests that are `under_review`. `completed` approves the request (final). `correction_required` sends it back to the customer; `adminNote` (optional, max 1000 chars) tells them what to fix.\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -4990,9 +5066,8 @@
                   "status": {
                     "type": "string",
                     "enum": [
-                      "under_review",
-                      "correction_required",
-                      "completed"
+                      "completed",
+                      "correction_required"
                     ]
                   },
                   "adminNote": {

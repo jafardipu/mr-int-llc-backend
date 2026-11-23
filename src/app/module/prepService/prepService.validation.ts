@@ -1,18 +1,15 @@
 import { z } from 'zod';
+import { PREP_REVIEW_STATUSES } from './prepService.constants.js';
 
-const create = z.object({
+// Create and resubmit take only uploaded files; the service checks those.
+
+const review = z.object({
   body: z.object({
-    serviceType: z.string().min(1, 'Service type is required'),
-    notes: z.string().optional(),
-    attachments: z.array(z.string()).optional(),
+    status: z.enum(PREP_REVIEW_STATUSES, {
+      error: 'Status must be completed or correction_required',
+    }),
+    adminNote: z.string().max(1000).nullish(),
   }),
 });
 
-const updateStatus = z.object({
-  body: z.object({
-    status: z.enum(['under_review', 'correction_required', 'completed']),
-    adminNote: z.string().optional(),
-  }),
-});
-
-export const prepServiceValidation = { create, updateStatus };
+export const prepServiceValidation = { review };
