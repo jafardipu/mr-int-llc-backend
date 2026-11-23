@@ -1003,14 +1003,29 @@ const ops: Op[] = [
   {
     method: 'post',
     path: '/prep-services',
-    summary: 'Create 3PL prep request (customer, multipart attachments)',
+    summary: 'Submit a prep request (customer, attachments only)',
     tags: ['Prep Services'],
     auth: 'bearer',
     roles: 'retail, wholesale',
     multipart: true,
+    description:
+      'multipart/form-data with 1-8 files in the `attachments` field (JPG, PNG, WEBP, PDF, CSV, XLS, XLSX; max 10 MB each). The request starts as `under_review`.',
     body: {
-      serviceType: { type: 'string' },
-      notes: { type: 'string' },
+      attachments: { type: 'array', items: { type: 'string', format: 'binary' } },
+    },
+  },
+  {
+    method: 'patch',
+    path: '/prep-services/{id}/resubmit',
+    summary: 'Resubmit attachments after a correction request (customer)',
+    tags: ['Prep Services'],
+    auth: 'bearer',
+    roles: 'retail, wholesale',
+    pathParams: ['id'],
+    multipart: true,
+    description:
+      'Only when the request is `correction_required`. Replaces all attachments (same file rules as create) and moves the request back to `under_review`. `adminNote` is kept so the admin sees what was asked.',
+    body: {
       attachments: { type: 'array', items: { type: 'string', format: 'binary' } },
     },
   },
@@ -1021,17 +1036,11 @@ const ops: Op[] = [
     tags: ['Prep Services'],
     auth: 'bearer',
     roles: 'retail, wholesale',
-    query: paginationQuery,
-  },
-  {
-    method: 'get',
-    path: '/prep-services',
-    summary: 'List all prep requests (admin)',
-    tags: ['Prep Services'],
-    auth: 'bearer',
-    roles: 'admin, supper_admin',
+    description: 'Newest first by default.',
     query: {
-      ...paginationQuery,
+      page: paginationQuery.page,
+      limit: paginationQuery.limit,
+      sort: paginationQuery.sort,
       status: {
         type: 'string',
         enum: ['under_review', 'correction_required', 'completed'],
@@ -1040,8 +1049,26 @@ const ops: Op[] = [
   },
   {
     method: 'get',
+    path: '/prep-services',
+    summary: 'List all prep requests (admin)',
+    tags: ['Prep Services'],
+    auth: 'bearer',
+    roles: 'admin, supper_admin',
+    description:
+      'Newest first by default. `searchTerm` matches the customer name or email. Use `status=under_review&sort=updatedAt` for a review queue (longest waiting first).',
+    query: {
+      ...paginationQuery,
+      status: {
+        type: 'string',
+        enum: ['under_review', 'correction_required', 'completed'],
+      },
+      userId: { type: 'string', description: 'Only this customer' },
+    },
+  },
+  {
+    method: 'get',
     path: '/prep-services/{id}',
-    summary: 'Get prep request by id',
+    summary: 'Get prep request by id (owner or admin)',
     tags: ['Prep Services'],
     auth: 'bearer',
     pathParams: ['id'],
@@ -1049,15 +1076,17 @@ const ops: Op[] = [
   {
     method: 'patch',
     path: '/prep-services/{id}/status',
-    summary: 'Update prep request status (admin)',
+    summary: 'Review a prep request: approve or request correction (admin)',
     tags: ['Prep Services'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
     pathParams: ['id'],
+    description:
+      'Only for requests that are `under_review`. `completed` approves the request (final). `correction_required` sends it back to the customer; `adminNote` (optional, max 1000 chars) tells them what to fix.',
     body: {
       status: {
         type: 'string',
-        enum: ['under_review', 'correction_required', 'completed'],
+        enum: ['completed', 'correction_required'],
       },
       adminNote: { type: 'string' },
     },

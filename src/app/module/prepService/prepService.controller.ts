@@ -4,21 +4,44 @@ import catchAsync from '@app/utils/catchAsync.js';
 import sendResponse from '@app/utils/sendResponse.js';
 import { prepServiceService } from './prepService.service.js';
 
+// Files from upload.array() in the route; empty when none were sent.
+const uploadedFiles = (req: Request) =>
+  Array.isArray(req.files) ? req.files : [];
+
+const isAdminRole = (role: string) => role === 'admin' || role === 'supper_admin';
+
 const createPrepService = catchAsync(async (req: Request, res: Response) => {
   const result = await prepServiceService.createPrepService(
     req.user.userId,
-    req.body,
+    uploadedFiles(req),
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Prep service request created successfully',
+    message: 'Prep service request submitted successfully',
+    data: result,
+  });
+});
+
+const resubmitPrepService = catchAsync(async (req: Request, res: Response) => {
+  const result = await prepServiceService.resubmitPrepService(
+    req.params.id as string,
+    req.user.userId,
+    uploadedFiles(req),
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Attachments resubmitted for review',
     data: result,
   });
 });
 
 const getMyPrepServices = catchAsync(async (req: Request, res: Response) => {
-  const result = await prepServiceService.listByUser(req.user.userId, req.query);
+  const result = await prepServiceService.listPrepServices(
+    req.query,
+    req.user.userId,
+  );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -28,7 +51,7 @@ const getMyPrepServices = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllPrepServices = catchAsync(async (req: Request, res: Response) => {
-  const result = await prepServiceService.getAllPrepService(req.query);
+  const result = await prepServiceService.listPrepServices(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -38,12 +61,10 @@ const getAllPrepServices = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getPrepServiceById = catchAsync(async (req: Request, res: Response) => {
-  const isAdmin =
-    req.user.role === 'admin' || req.user.role === 'supper_admin';
   const result = await prepServiceService.getPrepServiceById(
     req.params.id as string,
     req.user.userId,
-    isAdmin,
+    isAdminRole(req.user.role),
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -53,23 +74,27 @@ const getPrepServiceById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updatePrepServiceStatus = catchAsync(async (req: Request, res: Response) => {
-  const result = await prepServiceService.updatePrepServiceStatus(
+const reviewPrepService = catchAsync(async (req: Request, res: Response) => {
+  const result = await prepServiceService.reviewPrepService(
     req.params.id as string,
-    req.body,
+    { status: req.body.status, adminNote: req.body.adminNote },
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Prep service status updated successfully',
+    message:
+      result.status === 'completed'
+        ? 'Prep service request approved'
+        : 'Correction requested from the customer',
     data: result,
   });
 });
 
 export const prepServiceController = {
   createPrepService,
+  resubmitPrepService,
   getMyPrepServices,
   getAllPrepServices,
   getPrepServiceById,
-  updatePrepServiceStatus,
+  reviewPrepService,
 };

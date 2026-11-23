@@ -348,12 +348,13 @@ model Payment {
   @@map("payments")
 }
 
+// Customer uploads attachments -> admin approves (`completed`) or asks for
+// changes (`correction_required` + optional adminNote) -> customer resubmits
+// attachments -> back to `under_review`.
 model PrepServiceRequest {
   id          String            @id @default(auto()) @map("_id") @db.ObjectId
   userId      String            @db.ObjectId
-  serviceType String
   status      PrepServiceStatus @default(under_review)
-  notes       String?
   attachments String[]
   adminNote   String?
   isDeleted   Boolean           @default(false)

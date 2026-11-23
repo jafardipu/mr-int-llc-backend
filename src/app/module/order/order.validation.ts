@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 // Prices (discount, shipping, tax, total) are always calculated on the server.
-// Unknown fields such as a client-sent `discount` are stripped by zod.
+// validateRequest does not replace req.body with the parsed result, so extra
+// fields such as a client-sent `discount` still reach the service; checkout
+// reads only addressId, notes and promoCode.
 const checkout = z.object({
   body: z.object({
     addressId: z.string().min(1, 'Address is required'),
