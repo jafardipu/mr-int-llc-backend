@@ -70,12 +70,126 @@ const paginationQuery = {
 
 const orderStatusEnum = ['pending', 'processing', 'completed', 'cancelled'];
 
+const bannerSchema = {
+  type: 'object',
+  description:
+    'A homepage banner points to one product or one category. Banners made before targets existed have only `link` (targetType, productId, categoryId, discountPercent, startDate and endDate are null).',
+  properties: {
+    id: objectId,
+    image: { type: 'string' },
+    targetType: { type: 'string', enum: ['product', 'category'], nullable: true },
+    productId: { ...objectId, nullable: true },
+    categoryId: { ...objectId, nullable: true },
+    product: {
+      type: 'object',
+      nullable: true,
+      properties: {
+        id: objectId,
+        name: { type: 'string' },
+        sku: { type: 'string' },
+        retailPrice: { type: 'number' },
+        status: { type: 'string', enum: ['active', 'inactive', 'out_of_stock'] },
+        isDeleted: { type: 'boolean' },
+        images: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: objectId,
+              url: { type: 'string' },
+              isPrimary: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    category: {
+      type: 'object',
+      nullable: true,
+      properties: {
+        id: objectId,
+        name: { type: 'string' },
+        status: { type: 'string', enum: ['active', 'inactive'] },
+        isDeleted: { type: 'boolean' },
+        _count: {
+          type: 'object',
+          properties: {
+            products: { type: 'integer', description: 'Non-deleted products' },
+          },
+        },
+      },
+    },
+    discountPercent: {
+      type: 'number',
+      nullable: true,
+      minimum: 1,
+      maximum: 99,
+      description: 'Percent off the customer price while the offer runs; null = no offer',
+    },
+    startDate: { type: 'string', format: 'date-time', nullable: true },
+    endDate: { type: 'string', format: 'date-time', nullable: true },
+    link: { type: 'string', nullable: true, description: 'Legacy only; null for targeted banners' },
+    isActive: { type: 'boolean' },
+    isDeleted: { type: 'boolean' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const productSchema = {
+  type: 'object',
+  description:
+    'Product as returned by customer-facing reads (list, featured, detail, deals, wishlist, cart). Only the pricing fields are listed here.',
+  properties: {
+    id: objectId,
+    categoryId: objectId,
+    retailPrice: { type: 'number' },
+    wholesalePrice: { type: 'number' },
+    isDeal: { type: 'boolean' },
+    dealPrice: { type: 'number', nullable: true },
+    displayPrice: {
+      type: 'number',
+      description:
+        "What this customer pays now. Wholesale users start from wholesalePrice, everyone else from retailPrice. A running banner discount comes off that price; with a deal too, the lower price wins (discounts don't stack).",
+    },
+    originalPrice: {
+      type: 'number',
+      nullable: true,
+      description: 'The price the banner discount was taken from; null when no banner discount applies',
+    },
+    bannerDiscount: {
+      type: 'object',
+      nullable: true,
+      properties: {
+        percent: { type: 'number' },
+        endsAt: { type: 'string', format: 'date-time' },
+        bannerId: objectId,
+      },
+    },
+    displayMinQty: { type: 'integer' },
+    isWholesale: { type: 'boolean' },
+  },
+};
+
+const bannerFormBody = {
+  image: { type: 'string', format: 'binary', description: 'Banner image file' },
+  data: {
+    type: 'string',
+    description:
+      'JSON: { targetType: "product"|"category", productId, categoryId, discountPercent (1-99 or null), startDate, endDate, isActive, link }. Only the id matching targetType is kept. A discount requires startDate and endDate, with endDate after startDate. Without a discount the dates are cleared.',
+    example:
+      '{"targetType":"product","productId":"665f00000000000000000001","categoryId":null,"discountPercent":20,"startDate":"2026-12-01T00:00:00.000Z","endDate":"2026-12-07T23:59:59.999Z","isActive":true,"link":null}',
+  },
+};
+
 const ops: Op[] = [
   // Auth
   {
     method: 'post',
     path: '/auth/register',
     summary: 'Register retail or wholesale customer',
+    description:
+      'A wholesale sign-up owes the one-time wholesale account fee (GET /wholesale-fee/info) when it is turned on. It is paid after OTP verification.',
     tags: ['Auth'],
     body: {
       name: { type: 'string' },
@@ -90,6 +204,8 @@ const ops: Op[] = [
     method: 'post',
     path: '/auth/login',
     summary: 'Login and receive access/refresh tokens',
+    description:
+      'Response data also has `wholesaleFee` ({ required, status, amount, currency, paidAt }). When `required` is true, send the customer to pay the wholesale account fee.',
     tags: ['Auth'],
     body: {
       email: { type: 'string', format: 'email' },
@@ -140,7 +256,7 @@ const ops: Op[] = [
     path: '/otp/verify-otp',
     summary: 'Verify OTP (primary)',
     description:
-      'Requires header `token` = OTP session JWT from register/resend (`data.otpToken.token`). Body only needs `otp` (6 digits). Do not send email in this body. Token expires in 3 minutes.',
+      'Requires header `token` = OTP session JWT from register/resend (`data.otpToken.token`). Body only needs `otp` (6 digits). Do not send email in this body. Token expires in 3 minutes. Response data has `token`, `user` and `wholesaleFee` ({ required, status, amount, currency, paidAt }); `required: true` means the new wholesale account must pay its fee next.',
     tags: ['OTP'],
     headers: {
       token: {
@@ -395,6 +511,8 @@ const ops: Op[] = [
     method: 'get',
     path: '/products',
     summary: 'List products (optional auth for role pricing)',
+    description:
+      'Each product carries displayPrice, originalPrice and bannerDiscount (schema: Product). minPrice/maxPrice and price sorting use the stored retailPrice/wholesalePrice, not the discounted price.',
     tags: ['Products'],
     auth: 'optional',
     query: {
@@ -424,6 +542,8 @@ const ops: Op[] = [
     method: 'get',
     path: '/products/{id}',
     summary: 'Get product by id',
+    description:
+      'Includes displayPrice, originalPrice and bannerDiscount for the caller (schema: Product).',
     tags: ['Products'],
     auth: 'optional',
     pathParams: ['id'],
@@ -947,17 +1067,64 @@ const ops: Op[] = [
     pathParams: ['id'],
   },
 
+  // Wholesale account fee
+  {
+    method: 'get',
+    path: '/wholesale-fee/info',
+    summary: 'One-time wholesale account fee (public)',
+    description:
+      'Returns { enabled, amount, currency } from the admin-set prices (contents.prices.wholesaleAccountFee). Show it on the sign-up form when the customer picks wholesale.',
+    tags: ['Wholesale Fee'],
+  },
+  {
+    method: 'get',
+    path: '/wholesale-fee/me',
+    summary: 'My wholesale account fee status',
+    description:
+      'Returns { required, status, amount, currency, paidAt }. `required` is true while the fee is unpaid; status is null for accounts that never owed it.',
+    tags: ['Wholesale Fee'],
+    auth: 'bearer',
+    roles: 'wholesale (also while the fee is unpaid)',
+  },
+  {
+    method: 'post',
+    path: '/wholesale-fee/checkout',
+    summary: 'Start paying the wholesale account fee',
+    description:
+      'Charges the current wholesale account fee from the admin-set prices. Creates (or reuses) a Stripe Checkout Session and returns { checkoutUrl, sessionId, amount, currency }. Redirect the customer to checkoutUrl. Stripe returns to CLIENT_URL/wholesale-fee/success?session_id=... or CLIENT_URL/wholesale-fee/cancel. 400 when nothing is owed or it is already paid; 409 while a payment is still processing.',
+    tags: ['Wholesale Fee'],
+    auth: 'bearer',
+    roles: 'wholesale (also while the fee is unpaid)',
+  },
+  {
+    method: 'get',
+    path: '/wholesale-fee/confirm',
+    summary: 'Confirm the fee payment after the Stripe redirect',
+    description:
+      'Call from the success page with the session_id Stripe put in the URL. Records the payment if Stripe says it is paid and returns the same shape as GET /wholesale-fee/me.',
+    tags: ['Wholesale Fee'],
+    auth: 'bearer',
+    roles: 'wholesale (also while the fee is unpaid)',
+    query: {
+      session_id: { type: 'string', required: true, description: 'Stripe Checkout Session id (cs_...)' },
+    },
+  },
+
   // Banners
   {
     method: 'get',
     path: '/banners/homepage',
     summary: 'Public homepage banners',
+    description:
+      'Active banners (schema: Banner) that are live right now: no discount, or startDate <= now <= endDate (scheduled and ended offers are hidden), and a target that is still active and not deleted. Legacy link-only banners are included.',
     tags: ['Banners'],
   },
   {
     method: 'get',
     path: '/banners',
     summary: 'List all banners (admin)',
+    description:
+      'Every non-deleted banner with its product or category (schema: Banner). searchTerm matches link, product name or category name (case-insensitive).',
     tags: ['Banners'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
@@ -967,6 +1134,7 @@ const ops: Op[] = [
     method: 'get',
     path: '/banners/{id}',
     summary: 'Get banner by id',
+    description: 'Schema: Banner.',
     tags: ['Banners'],
     pathParams: ['id'],
   },
@@ -974,20 +1142,26 @@ const ops: Op[] = [
     method: 'post',
     path: '/banners',
     summary: 'Create banner (admin)',
+    description:
+      'targetType is required, plus productId or categoryId to match. Validation errors put the field name in errorSources[].path. 404 "Product not found" / "Category not found" when the target is missing or deleted. Returns the Banner.',
     tags: ['Banners'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
     multipart: true,
+    body: bannerFormBody,
   },
   {
     method: 'patch',
     path: '/banners/{id}',
     summary: 'Update banner (admin)',
+    description:
+      'Send only the fields that change. The rules from create are checked against the banner after the change (400 with the message). The target is re-checked (404) whenever targetType, productId or categoryId is sent. Returns the Banner.',
     tags: ['Banners'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
     pathParams: ['id'],
     multipart: true,
+    body: bannerFormBody,
   },
   {
     method: 'delete',
@@ -1134,12 +1308,14 @@ const ops: Op[] = [
     method: 'get',
     path: '/contents',
     summary: 'Get CMS contents (optional field filter)',
+    description:
+      'Includes `prices`: { shippingFee (USD per order), taxRate (percent of the subtotal after any promo discount), wholesaleAccountFee (USD, one-time; 0 = off) }. Use key=prices to get only the prices.',
     tags: ['Contents'],
     query: {
-      field: {
+      key: {
         type: 'string',
         description:
-          'Optional single content field, e.g. aboutUs, termsAndCondition, privacyPolicy',
+          'Optional single content field, e.g. prices, aboutUs, termsAndCondition, privacyPolicy',
       },
     },
   },
@@ -1147,6 +1323,8 @@ const ops: Op[] = [
     method: 'patch',
     path: '/contents',
     summary: 'Update CMS contents (admin)',
+    description:
+      'Send only what changes. `prices` can be partial; missing prices keep their value. Prices must be JSON numbers: shippingFee >= 0, taxRate 0-100, wholesaleAccountFee 0 or >= 0.50. New prices apply to the next checkout and fee payment. Setting wholesaleAccountFee to 0 turns the fee off and unlocks wholesale accounts that have not paid it.',
     tags: ['Contents'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
@@ -1158,6 +1336,14 @@ const ops: Op[] = [
       shippingPolicy: { type: 'string' },
       copyRight: { type: 'string' },
       footerText: { type: 'string' },
+      prices: {
+        type: 'object',
+        properties: {
+          shippingFee: { type: 'number', minimum: 0, example: 10 },
+          taxRate: { type: 'number', minimum: 0, maximum: 100, example: 8.25 },
+          wholesaleAccountFee: { type: 'number', minimum: 0, example: 20 },
+        },
+      },
     },
   },
 
@@ -1166,6 +1352,8 @@ const ops: Op[] = [
     method: 'get',
     path: '/faq',
     summary: 'List FAQs',
+    description:
+      'Site-wide FAQs (not tied to a category). Sorted by `order` ascending unless `sort` is given. searchTerm matches question or answer. Send a large `limit` to get every FAQ in one page.',
     tags: ['FAQ'],
     query: paginationQuery,
   },
@@ -1180,6 +1368,7 @@ const ops: Op[] = [
     method: 'post',
     path: '/faq',
     summary: 'Create FAQ (admin)',
+    description: 'The new FAQ is placed at the end of the list (highest `order`).',
     tags: ['FAQ'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
@@ -1190,8 +1379,22 @@ const ops: Op[] = [
   },
   {
     method: 'patch',
+    path: '/faq/reorder',
+    summary: 'Reorder FAQs (admin)',
+    description:
+      'Send every FAQ id, in the new display order. The first id gets order 1, the next 2, and so on. Fails with 400 if an id is repeated, unknown, or missing. Returns the full list in its new order.',
+    tags: ['FAQ'],
+    auth: 'bearer',
+    roles: 'admin, supper_admin',
+    body: {
+      ids: { type: 'array', items: objectId },
+    },
+  },
+  {
+    method: 'patch',
     path: '/faq/{id}',
     summary: 'Update FAQ (admin)',
+    description: 'Edits question and/or answer. To change position use PATCH /faq/reorder.',
     tags: ['FAQ'],
     auth: 'bearer',
     roles: 'admin, supper_admin',
@@ -1462,6 +1665,10 @@ export function buildOpenApiDocument(options?: { publicOrigin?: string }) {
         },
         '400': { description: 'Validation or bad request' },
         '401': { description: 'Unauthorized' },
+        '402': {
+          description:
+            'Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)',
+        },
         '403': { description: 'Forbidden' },
         '404': { description: 'Not found' },
       },
@@ -1482,6 +1689,7 @@ export function buildOpenApiDocument(options?: { publicOrigin?: string }) {
     'Stripe',
     'Deals',
     'Banners',
+    'Wholesale Fee',
     'Promo Codes',
     'Prep Services',
     'Reviews',
@@ -1538,6 +1746,8 @@ export function buildOpenApiDocument(options?: { publicOrigin?: string }) {
       schemas: {
         ApiEnvelope: envelope,
         ObjectId: objectId,
+        Banner: bannerSchema,
+        Product: productSchema,
       },
     },
     paths,

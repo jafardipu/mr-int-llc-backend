@@ -26,6 +26,7 @@ import type {
 } from './auth.interface.js';
 import { Role } from '../../../../generated/prisma/index.js';
 import HashPassword from '@app/shared/hashPassword.js';
+import { wholesaleFeeService } from '../wholesaleFee/wholesaleFee.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,7 @@ const register = async (payload: IRegister) => {
         where: { id: isExist.id },
         data: userData,
       });
+      await wholesaleFeeService.syncSignupFee(updated);
       return sanitizeUser(updated);
     }
     throw new AppError(
@@ -77,6 +79,7 @@ const register = async (payload: IRegister) => {
   const result = await prisma.user.create({
     data: userData,
   });
+  await wholesaleFeeService.syncSignupFee(result);
 
   return sanitizeUser(result);
 };
@@ -164,6 +167,8 @@ const login = async (payload: ILogin, req: Request) => {
     user: sanitizeUser(newUser),
     accessToken,
     refreshToken,
+    // `required: true` means: send the customer to pay the wholesale fee.
+    wholesaleFee: await wholesaleFeeService.getFeeState(user.id),
   };
 };
 

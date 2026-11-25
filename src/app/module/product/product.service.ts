@@ -7,6 +7,7 @@ import AppError from '@app/error/AppError.js';
 import pickQuery from '@app/utils/pickQuery.js';
 import { paginationHelper } from '@app/helpers/pagination.helpers.js';
 import { withDisplayPrice } from './product.utils.js';
+import { getActiveBannerDiscounts } from '../banner/banner.discount.js';
 
 const productInclude = {
   brand: true,
@@ -172,9 +173,10 @@ const getAllProduct = async (query: Record<string, any>, role?: string) => {
     include: productInclude,
   });
   const total = await prisma.product.count({ where });
+  const discounts = await getActiveBannerDiscounts();
 
   return {
-    data: data.map(item => withDisplayPrice(item, role)),
+    data: data.map(item => withDisplayPrice(item, role, discounts)),
     meta: { page, limit, total },
   };
 };
@@ -269,6 +271,7 @@ const getFeaturedProducts = async (
       : [];
 
   const combined = [...featured, ...bestsellers];
+  const discounts = await getActiveBannerDiscounts();
   const source =
     featured.length === 0
       ? ('fallback' as const)
@@ -277,7 +280,7 @@ const getFeaturedProducts = async (
         : ('featured' as const);
 
   return {
-    data: combined.map(item => withDisplayPrice(item, role)),
+    data: combined.map(item => withDisplayPrice(item, role, discounts)),
     meta: { page: 1, limit: target, total: combined.length },
     source,
   };
@@ -301,7 +304,7 @@ const getProductById = async (id: string, role?: string) => {
   if (!result || result.isDeleted)
     throw new AppError(httpStatus.NOT_FOUND, 'Product not found!');
 
-  return withDisplayPrice(result, role);
+  return withDisplayPrice(result, role, await getActiveBannerDiscounts());
 };
 
 const updateProduct = async (id: string, payload: any) => {

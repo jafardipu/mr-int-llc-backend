@@ -9,6 +9,16 @@ import StripeService from '@app/class/string.class.js';
 import { notificationQueue } from '@app/redis/index.js';
 import { notifyAdmins } from '../notification/notification.service.js';
 import {
+  ensureStripeCustomer,
+  isCheckoutSessionId,
+  MIN_CARD_AMOUNT_CENTS,
+  toCents,
+} from './payment.utils.js';
+import {
+  isWholesaleFeePayment,
+  wholesaleFeeService,
+} from '../wholesaleFee/wholesaleFee.service.js';
+import {
   OrderStatus,
   PAYMENT_STATUS,
   type Prisma,
@@ -61,9 +71,6 @@ type CheckoutSessionLike = {
   metadata: Record<string, string> | null;
 };
 
-// Stripe's minimum charge for USD card payments.
-const MIN_CARD_AMOUNT_CENTS = 50;
-
 // Statuses in which a PaymentIntent (old flow) can still be paid.
 const OPEN_INTENT_STATUSES = new Set([
   'requires_payment_method',
@@ -74,13 +81,8 @@ const OPEN_INTENT_STATUSES = new Set([
 const PROCESSING_MESSAGE =
   'A payment for this order is still processing. Try again in a few minutes.';
 
-const toCents = (amount: number) => Math.round(amount * 100);
-
 // While unpaid, Payment.transactionId holds the Checkout Session id (cs_...).
 // Once paid it holds the PaymentIntent id (pi_...), which refunds use.
-const isCheckoutSessionId = (id?: string | null): id is string =>
-  typeof id === 'string' && id.startsWith('cs_');
-
 const isStripeIntentId = (id?: string | null): id is string =>
   typeof id === 'string' && id.startsWith('pi_');
 
@@ -206,27 +208,6 @@ const markCheckoutSessionPaid = async (session: CheckoutSessionLike) => {
     amount: session.amount_total ?? 0,
     metadata: orderId ? { orderId } : null,
   });
-};
-
-const ensureStripeCustomer = async (user: {
-  id: string;
-  email: string;
-  name?: string | null;
-  customerId?: string | null;
-}) => {
-  if (user.customerId) return user.customerId;
-
-  const customer = await StripeService.createCustomer(
-    user.email,
-    user.name || 'Customer',
-  );
-  if (customer?.id) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { customerId: customer.id },
-    });
-  }
-  return customer?.id ?? null;
 };
 
 // One-line breakdown shown under the order name on the Stripe Checkout page.
@@ -436,14 +417,24 @@ const handleWebhook = async (rawBody?: Buffer, signature?: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Stripe signature');
   }
 
-  // Sessions and intents from other apps on the same Stripe account are ignored.
+  // Wholesale account fees are told apart by metadata.type; everything else is
+  // an order payment. Sessions and intents from other apps on the same Stripe
+  // account are ignored.
   switch (event.type) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded':
-      await markCheckoutSessionPaid(event.data.object);
+      if (isWholesaleFeePayment(event.data.object)) {
+        await wholesaleFeeService.markPaidFromSession(event.data.object);
+      } else {
+        await markCheckoutSessionPaid(event.data.object);
+      }
       break;
     case 'payment_intent.succeeded':
-      await markPaymentSucceeded(event.data.object);
+      if (isWholesaleFeePayment(event.data.object)) {
+        await wholesaleFeeService.markPaidFromIntent(event.data.object);
+      } else {
+        await markPaymentSucceeded(event.data.object);
+      }
       break;
   }
 

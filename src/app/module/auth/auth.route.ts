@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authControllers } from './auth.controller.js';
 import { AUTH_ROLES } from '../users/user.constants.js';
-import auth from '@app/middleware/auth.js';
+import { authAllowUnpaidFee } from '@app/middleware/auth.js';
 import validateRequest from '@app/middleware/validateRequest.js';
 import { authValidation } from './auth.validation.js';
 
@@ -21,7 +21,7 @@ router.post('/refresh-token', authControllers.refreshToken);
 
 router.patch(
   '/change-password',
-  auth(...AUTH_ROLES),
+  authAllowUnpaidFee(...AUTH_ROLES),
   validateRequest(authValidation.changePassword),
   authControllers.changePassword,
 );

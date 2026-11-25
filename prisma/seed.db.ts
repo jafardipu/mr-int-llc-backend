@@ -317,6 +317,9 @@ async function main() {
     }
   }
 
+  // Starting store prices: $10 shipping, 0% tax, $20 wholesale account fee.
+  // Keep in step with DEFAULT_PRICES in src/app/module/contents/content.pricing.ts.
+  const prices = { shippingFee: 10, taxRate: 0, wholesaleAccountFee: 20 };
   const contents = await prisma.contents.findFirst();
   if (!contents) {
     await prisma.contents.create({
@@ -329,7 +332,13 @@ async function main() {
         shippingPolicy: 'Orders ship within 3-5 business days.',
         copyRight: '© 2026 MR International LLC. All rights reserved.',
         footerText: 'Thank you for shopping with MR International LLC.',
+        prices,
       },
+    });
+  } else if (!contents.prices) {
+    await prisma.contents.update({
+      where: { id: contents.id },
+      data: { prices: { set: prices } },
     });
   }
 

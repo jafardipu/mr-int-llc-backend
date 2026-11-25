@@ -20,11 +20,9 @@ const toNumber = (value: string | undefined, fallback: number) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
+// Shipping, tax and the wholesale account fee are not env settings: the admin
+// edits them on the contents record (contents/content.pricing.ts).
 const checkout = {
-  // Flat shipping fee in USD added to every order.
-  shipping_fee: toNumber(process.env.SHIPPING_FEE, 0),
-  // Tax percentage applied to (subtotal - discount), e.g. 8.25.
-  tax_rate: toNumber(process.env.TAX_RATE, 0),
   // Unpaid orders older than this are cancelled automatically. 0 disables it.
   unpaid_order_expiry_hours: toNumber(process.env.UNPAID_ORDER_EXPIRY_HOURS, 0),
 };

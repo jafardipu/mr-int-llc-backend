@@ -5,7 +5,10 @@ import sendResponse from '@app/utils/sendResponse.js';
 import { faqService } from './faq.service.js';
 
 const createFaq = catchAsync(async (req: Request, res: Response) => {
-  const result = await faqService.createFaq(req.body);
+  const result = await faqService.createFaq({
+    question: req.body.question,
+    answer: req.body.answer,
+  });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -35,11 +38,24 @@ const getFaqById = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateFaq = catchAsync(async (req: Request, res: Response) => {
-  const result = await faqService.updateFaq(req.params.id as string, req.body);
+  const result = await faqService.updateFaq(req.params.id as string, {
+    question: req.body.question,
+    answer: req.body.answer,
+  });
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Faq updated successfully',
+    data: result,
+  });
+});
+
+const reorderFaqs = catchAsync(async (req: Request, res: Response) => {
+  const result = await faqService.reorderFaqs(req.body.ids);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Faq order updated successfully',
     data: result,
   });
 });
@@ -59,5 +75,6 @@ export const faqController = {
   getAllFaq,
   getFaqById,
   updateFaq,
+  reorderFaqs,
   deleteFaq,
 };

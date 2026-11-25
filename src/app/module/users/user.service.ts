@@ -7,6 +7,7 @@ import pickQuery from '@app/utils/pickQuery.js';
 import { paginationHelper } from '@app/helpers/pagination.helpers.js';
 import { Role, type Prisma } from '../../../../generated/prisma/index.js';
 import { sanitizeUser } from '../auth/user.utils.js';
+import { wholesaleFeeService } from '../wholesaleFee/wholesaleFee.service.js';
 
 const userSelect = {
   id: true,
@@ -26,6 +27,8 @@ const userSelect = {
   },
   address: true,
   deviceHistory: true,
+  // null for accounts that never owed the one-time wholesale fee.
+  wholesaleFee: { select: { status: true, amount: true, paidAt: true } },
 } satisfies Prisma.UserSelect;
 
 const create = async (payload: Prisma.UserCreateInput) => {
@@ -66,12 +69,12 @@ const create = async (payload: Prisma.UserCreateInput) => {
     }
 
     if (!isExist.verification?.status) {
-      return sanitizeUser(
-        await prisma.user.update({
-          where: { id: isExist.id },
-          data: userData,
-        }),
-      );
+      const updated = await prisma.user.update({
+        where: { id: isExist.id },
+        data: userData,
+      });
+      await wholesaleFeeService.syncSignupFee(updated);
+      return sanitizeUser(updated);
     }
 
     throw new AppError(
@@ -91,6 +94,7 @@ const create = async (payload: Prisma.UserCreateInput) => {
     },
     include: { address: true },
   });
+  await wholesaleFeeService.syncSignupFee(result);
 
   return sanitizeUser(result);
 };
@@ -190,10 +194,12 @@ const getById = async (id: string) => {
 };
 
 const update = async (id: string, payload: Prisma.UserUpdateInput) => {
-  const { password, role, email, ...safePayload }: any = payload;
+  // wholesaleFee is a relation: left in, a nested write could mark the fee paid.
+  const { password, role, email, wholesaleFee, ...safePayload }: any = payload;
   void password;
   void role;
   void email;
+  void wholesaleFee;
 
   try {
     const result = await prisma.user.update({

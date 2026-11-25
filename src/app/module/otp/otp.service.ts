@@ -11,6 +11,7 @@ import { status } from '../../../../generated/prisma/index.js';
 import prisma from '@app/shared/prisma.js';
 import { fileURLToPath } from 'url';
 import { sanitizeUser } from '../auth/user.utils.js';
+import { wholesaleFeeService } from '../wholesaleFee/wholesaleFee.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -166,7 +167,13 @@ const verifyOtp = async (token: string, otp: string | number) => {
     expiresIn: '30d',
   });
 
-  return { user: sanitizeUser(updateUser), token: jwtToken };
+  return {
+    user: sanitizeUser(updateUser),
+    token: jwtToken,
+    // `required: true` right after sign-up means: send the customer to pay
+    // the wholesale fee next.
+    wholesaleFee: await wholesaleFeeService.getFeeState(updateUser.id),
+  };
 };
 
 export const otpServices = {

@@ -13,6 +13,13 @@ router.post(
   validateRequest(faqValidation.create),
   faqController.createFaq,
 );
+// Before '/:id' so "reorder" is not read as an id.
+router.patch(
+  '/reorder',
+  auth(...ADMIN_ROLES),
+  validateRequest(faqValidation.reorder),
+  faqController.reorderFaqs,
+);
 router.patch(
   '/:id',
   auth(...ADMIN_ROLES),

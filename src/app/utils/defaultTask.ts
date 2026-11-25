@@ -1,8 +1,18 @@
 import config from '@app/config/index.js';
 import HashPassword from '@app/shared/hashPassword.js';
 import prisma from '@app/shared/prisma.js';
+import { assignMissingFaqOrder } from '@app/module/faq/faq.service.js';
+import { DEFAULT_PRICES } from '@app/module/contents/content.pricing.js';
 
 export async function defaultTask() {
+  // Not awaited by the caller, so a failure here must not become an
+  // unhandled rejection that stops the server.
+  try {
+    await assignMissingFaqOrder();
+  } catch (error) {
+    console.error('Could not assign display order to existing FAQs:', error);
+  }
+
   const email = config?.admin_credentials?.email || 'admin@gmail.com';
 
   const admin = await prisma.user.findFirst({
@@ -47,7 +57,14 @@ export async function defaultTask() {
           'MR International LLC is dedicated to providing quality products for retail and wholesale customers.',
         copyRight: '© 2026 MR International LLC. All rights reserved.',
         footerText: 'Thank you for visiting MR International LLC.',
+        prices: DEFAULT_PRICES,
       },
+    });
+  } else if (!content.prices) {
+    // Contents made before store prices existed: give them the starting prices.
+    await prisma.contents.update({
+      where: { id: content.id },
+      data: { prices: { set: DEFAULT_PRICES } },
     });
   }
 }

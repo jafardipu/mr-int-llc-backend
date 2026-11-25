@@ -7,6 +7,8 @@ import pickQuery from '@app/utils/pickQuery.js';
 import { paginationHelper } from '@app/helpers/pagination.helpers.js';
 import generateCryptoString from '@app/utils/generateCryptoString.js';
 import { resolveUnitPrice } from '../product/product.utils.js';
+import { getActiveBannerDiscounts } from '../banner/banner.discount.js';
+import { getPricing } from '../contents/content.pricing.js';
 import { notificationQueue } from '@app/redis/index.js';
 import { notifyAdmins } from '../notification/notification.service.js';
 import {
@@ -54,6 +56,8 @@ const priceCart = async (userId: string, role: string, promoCode?: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Cart is empty');
   }
 
+  // Loaded fresh on every call so checkout charges the price at this moment.
+  const discounts = await getActiveBannerDiscounts();
   const lineItems = cart.items.map(item => {
     const product = item.product;
     if (product.isDeleted || product.status !== 'active') {
@@ -75,7 +79,7 @@ const priceCart = async (userId: string, role: string, promoCode?: string) => {
         `Insufficient stock for ${product.name}`,
       );
     }
-    const unitPrice = resolveUnitPrice(product, role);
+    const unitPrice = resolveUnitPrice(product, role, discounts);
     return {
       productId: product.id,
       name: product.name,
@@ -96,8 +100,10 @@ const priceCart = async (userId: string, role: string, promoCode?: string) => {
     ...(promoCode ? { code: promoCode } : {}),
   });
   const discount = roundMoney(appliedPromo.discount);
-  const shippingFee = roundMoney(config.checkout.shipping_fee);
-  const tax = roundMoney(((subtotal - discount) * config.checkout.tax_rate) / 100);
+  // Shipping and tax come from the admin-edited prices on the contents record.
+  const pricing = await getPricing();
+  const shippingFee = roundMoney(pricing.shippingFee);
+  const tax = roundMoney(((subtotal - discount) * pricing.taxRate) / 100);
   const total = roundMoney(Math.max(subtotal - discount + shippingFee + tax, 0));
 
   return {

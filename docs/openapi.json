@@ -3,7 +3,7 @@
   "info": {
     "title": "MR International LLC Ecommerce API",
     "version": "1.0.0",
-    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **107**"
+    "description": "Express 5 + Prisma 6 (MongoDB) backend.\n\n## Conventions\n- Base path: `/api/v1`\n- Success response: `{ success, message, data, meta? }`\n- Auth: `Authorization: Bearer <accessToken>`\n- Roles: `supper_admin`, `admin`, `retail`, `wholesale`\n- Upload routes accept multipart form fields + files\n\n## Module coverage\n- **Auth**\n- **OTP**\n- **Users**\n- **Categories**\n- **Brands**\n- **Products**\n- **Cart**\n- **Wishlist**\n- **Orders**\n- **Payments**\n- **Stripe**\n- **Deals**\n- **Banners**\n- **Wholesale Fee**\n- **Promo Codes**\n- **Prep Services**\n- **Reviews**\n- **Contents**\n- **FAQ**\n- **Notifications**\n- **Dashboard**\n- **Contact**\n- **Address**\n\nTotal documented operations: **112**"
   },
   "servers": [
     {
@@ -62,6 +62,9 @@
     },
     {
       "name": "Banners"
+    },
+    {
+      "name": "Wholesale Fee"
     },
     {
       "name": "Promo Codes"
@@ -139,6 +142,221 @@
         "type": "string",
         "description": "MongoDB ObjectId",
         "example": "66f000000000000000000001"
+      },
+      "Banner": {
+        "type": "object",
+        "description": "A homepage banner points to one product or one category. Banners made before targets existed have only `link` (targetType, productId, categoryId, discountPercent, startDate and endDate are null).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MongoDB ObjectId",
+            "example": "66f000000000000000000001"
+          },
+          "image": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "product",
+              "category"
+            ],
+            "nullable": true
+          },
+          "productId": {
+            "type": "string",
+            "description": "MongoDB ObjectId",
+            "example": "66f000000000000000000001",
+            "nullable": true
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "MongoDB ObjectId",
+            "example": "66f000000000000000000001",
+            "nullable": true
+          },
+          "product": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "MongoDB ObjectId",
+                "example": "66f000000000000000000001"
+              },
+              "name": {
+                "type": "string"
+              },
+              "sku": {
+                "type": "string"
+              },
+              "retailPrice": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "inactive",
+                  "out_of_stock"
+                ]
+              },
+              "isDeleted": {
+                "type": "boolean"
+              },
+              "images": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "MongoDB ObjectId",
+                      "example": "66f000000000000000000001"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "isPrimary": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "category": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "MongoDB ObjectId",
+                "example": "66f000000000000000000001"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "inactive"
+                ]
+              },
+              "isDeleted": {
+                "type": "boolean"
+              },
+              "_count": {
+                "type": "object",
+                "properties": {
+                  "products": {
+                    "type": "integer",
+                    "description": "Non-deleted products"
+                  }
+                }
+              }
+            }
+          },
+          "discountPercent": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 99,
+            "description": "Percent off the customer price while the offer runs; null = no offer"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "link": {
+            "type": "string",
+            "nullable": true,
+            "description": "Legacy only; null for targeted banners"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "description": "Product as returned by customer-facing reads (list, featured, detail, deals, wishlist, cart). Only the pricing fields are listed here.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "MongoDB ObjectId",
+            "example": "66f000000000000000000001"
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "MongoDB ObjectId",
+            "example": "66f000000000000000000001"
+          },
+          "retailPrice": {
+            "type": "number"
+          },
+          "wholesalePrice": {
+            "type": "number"
+          },
+          "isDeal": {
+            "type": "boolean"
+          },
+          "dealPrice": {
+            "type": "number",
+            "nullable": true
+          },
+          "displayPrice": {
+            "type": "number",
+            "description": "What this customer pays now. Wholesale users start from wholesalePrice, everyone else from retailPrice. A running banner discount comes off that price; with a deal too, the lower price wins (discounts don't stack)."
+          },
+          "originalPrice": {
+            "type": "number",
+            "nullable": true,
+            "description": "The price the banner discount was taken from; null when no banner discount applies"
+          },
+          "bannerDiscount": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "percent": {
+                "type": "number"
+              },
+              "endsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "bannerId": {
+                "type": "string",
+                "description": "MongoDB ObjectId",
+                "example": "66f000000000000000000001"
+              }
+            }
+          },
+          "displayMinQty": {
+            "type": "integer"
+          },
+          "isWholesale": {
+            "type": "boolean"
+          }
+        }
       }
     }
   },
@@ -149,7 +367,7 @@
           "Auth"
         ],
         "summary": "Register retail or wholesale customer",
-        "description": "",
+        "description": "A wholesale sign-up owes the one-time wholesale account fee (GET /wholesale-fee/info) when it is turned on. It is paid after OTP verification.",
         "requestBody": {
           "required": true,
           "content": {
@@ -203,6 +421,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -218,7 +439,7 @@
           "Auth"
         ],
         "summary": "Login and receive access/refresh tokens",
-        "description": "",
+        "description": "Response data also has `wholesaleFee` ({ required, status, amount, currency, paidAt }). When `required` is true, send the customer to pay the wholesale account fee.",
         "requestBody": {
           "required": true,
           "content": {
@@ -258,6 +479,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -290,6 +514,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -351,6 +578,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -399,6 +629,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -452,6 +685,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -467,7 +703,7 @@
           "OTP"
         ],
         "summary": "Verify OTP (primary)",
-        "description": "Requires header `token` = OTP session JWT from register/resend (`data.otpToken.token`). Body only needs `otp` (6 digits). Do not send email in this body. Token expires in 3 minutes.",
+        "description": "Requires header `token` = OTP session JWT from register/resend (`data.otpToken.token`). Body only needs `otp` (6 digits). Do not send email in this body. Token expires in 3 minutes. Response data has `token`, `user` and `wholesaleFee` ({ required, status, amount, currency, paidAt }); `required: true` means the new wholesale account must pay its fee next.",
         "parameters": [
           {
             "name": "token",
@@ -513,6 +749,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -575,6 +814,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -624,6 +866,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -672,6 +917,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -741,6 +989,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -840,6 +1091,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -877,6 +1131,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -938,6 +1195,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -975,6 +1235,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1025,6 +1288,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1085,6 +1351,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1132,6 +1401,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1201,6 +1473,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1273,6 +1548,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1335,6 +1613,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1379,6 +1660,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1439,6 +1723,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1486,6 +1773,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1558,6 +1848,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1613,6 +1906,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1657,6 +1953,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1717,6 +2016,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1765,6 +2067,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -1780,7 +2085,7 @@
           "Products"
         ],
         "summary": "List products (optional auth for role pricing)",
-        "description": "",
+        "description": "Each product carries displayPrice, originalPrice and bannerDiscount (schema: Product). minPrice/maxPrice and price sorting use the stored retailPrice/wholesalePrice, not the discounted price.",
         "security": [
           {
             "bearerAuth": []
@@ -1886,6 +2191,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -1999,6 +2307,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2049,6 +2360,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2064,7 +2378,7 @@
           "Products"
         ],
         "summary": "Get product by id",
-        "description": "",
+        "description": "Includes displayPrice, originalPrice and bannerDiscount for the caller (schema: Product).",
         "security": [
           {
             "bearerAuth": []
@@ -2099,6 +2413,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2159,6 +2476,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2207,6 +2527,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2244,6 +2567,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2299,6 +2625,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2366,6 +2695,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2414,6 +2746,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2451,6 +2786,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2503,6 +2841,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2553,6 +2894,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2602,6 +2946,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2663,6 +3010,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2754,6 +3104,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2791,6 +3144,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2841,6 +3197,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -2944,6 +3303,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -2993,6 +3355,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -3065,6 +3430,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3121,6 +3489,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3164,6 +3535,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -3209,6 +3583,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -3286,6 +3663,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3336,6 +3716,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3373,6 +3756,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -3471,6 +3857,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3543,6 +3932,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3592,6 +3984,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -3670,6 +4065,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3747,6 +4145,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3798,6 +4199,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3846,6 +4250,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -3893,6 +4300,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -3954,6 +4364,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4053,6 +4466,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4159,6 +4575,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4208,6 +4627,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4315,6 +4737,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4363,6 +4788,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4372,13 +4800,13 @@
         }
       }
     },
-    "/banners/homepage": {
+    "/wholesale-fee/info": {
       "get": {
         "tags": [
-          "Banners"
+          "Wholesale Fee"
         ],
-        "summary": "Public homepage banners",
-        "description": "",
+        "summary": "One-time wholesale account fee (public)",
+        "description": "Returns { enabled, amount, currency } from the admin-set prices (contents.prices.wholesaleAccountFee). Show it on the sign-up form when the customer picks wholesale.",
         "responses": {
           "200": {
             "description": "Success envelope",
@@ -4396,6 +4824,179 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/wholesale-fee/me": {
+      "get": {
+        "tags": [
+          "Wholesale Fee"
+        ],
+        "summary": "My wholesale account fee status",
+        "description": "Returns { required, status, amount, currency, paidAt }. `required` is true while the fee is unpaid; status is null for accounts that never owed it.\n\nRoles: wholesale (also while the fee is unpaid)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/wholesale-fee/checkout": {
+      "post": {
+        "tags": [
+          "Wholesale Fee"
+        ],
+        "summary": "Start paying the wholesale account fee",
+        "description": "Charges the current wholesale account fee from the admin-set prices. Creates (or reuses) a Stripe Checkout Session and returns { checkoutUrl, sessionId, amount, currency }. Redirect the customer to checkoutUrl. Stripe returns to CLIENT_URL/wholesale-fee/success?session_id=... or CLIENT_URL/wholesale-fee/cancel. 400 when nothing is owed or it is already paid; 409 while a payment is still processing.\n\nRoles: wholesale (also while the fee is unpaid)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/wholesale-fee/confirm": {
+      "get": {
+        "tags": [
+          "Wholesale Fee"
+        ],
+        "summary": "Confirm the fee payment after the Stripe redirect",
+        "description": "Call from the success page with the session_id Stripe put in the URL. Records the payment if Stripe says it is paid and returns the same shape as GET /wholesale-fee/me.\n\nRoles: wholesale (also while the fee is unpaid)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "description": "Stripe Checkout Session id (cs_...)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/banners/homepage": {
+      "get": {
+        "tags": [
+          "Banners"
+        ],
+        "summary": "Public homepage banners",
+        "description": "Active banners (schema: Banner) that are live right now: no discount, or startDate <= now <= endDate (scheduled and ended offers are hidden), and a target that is still active and not deleted. Legacy link-only banners are included.",
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4411,7 +5012,7 @@
           "Banners"
         ],
         "summary": "List all banners (admin)",
-        "description": "Roles: admin, supper_admin",
+        "description": "Every non-deleted banner with its product or category (schema: Banner). searchTerm matches link, product name or category name (case-insensitive).\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -4472,6 +5073,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4485,19 +5089,30 @@
           "Banners"
         ],
         "summary": "Create banner (admin)",
-        "description": "Roles: admin, supper_admin\n\nContent-Type: multipart/form-data",
+        "description": "targetType is required, plus productId or categoryId to match. Validation errors put the field name in errorSources[].path. 404 \"Product not found\" / \"Category not found\" when the target is missing or deleted. Returns the Banner.\n\nRoles: admin, supper_admin\n\nContent-Type: multipart/form-data",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Banner image file"
+                  },
+                  "data": {
+                    "type": "string",
+                    "description": "JSON: { targetType: \"product\"|\"category\", productId, categoryId, discountPercent (1-99 or null), startDate, endDate, isActive, link }. Only the id matching targetType is kept. A discount requires startDate and endDate, with endDate after startDate. Without a discount the dates are cleared.",
+                    "example": "{\"targetType\":\"product\",\"productId\":\"665f00000000000000000001\",\"categoryId\":null,\"discountPercent\":20,\"startDate\":\"2026-12-01T00:00:00.000Z\",\"endDate\":\"2026-12-07T23:59:59.999Z\",\"isActive\":true,\"link\":null}"
+                  }
+                }
               }
             }
           }
@@ -4518,6 +5133,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4534,7 +5152,7 @@
           "Banners"
         ],
         "summary": "Get banner by id",
-        "description": "",
+        "description": "Schema: Banner.",
         "parameters": [
           {
             "name": "id",
@@ -4564,6 +5182,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4577,7 +5198,7 @@
           "Banners"
         ],
         "summary": "Update banner (admin)",
-        "description": "Roles: admin, supper_admin\n\nContent-Type: multipart/form-data",
+        "description": "Send only the fields that change. The rules from create are checked against the banner after the change (400 with the message). The target is re-checked (404) whenever targetType, productId or categoryId is sent. Returns the Banner.\n\nRoles: admin, supper_admin\n\nContent-Type: multipart/form-data",
         "security": [
           {
             "bearerAuth": []
@@ -4596,12 +5217,23 @@
           }
         ],
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Banner image file"
+                  },
+                  "data": {
+                    "type": "string",
+                    "description": "JSON: { targetType: \"product\"|\"category\", productId, categoryId, discountPercent (1-99 or null), startDate, endDate, isActive, link }. Only the id matching targetType is kept. A discount requires startDate and endDate, with endDate after startDate. Without a discount the dates are cleared.",
+                    "example": "{\"targetType\":\"product\",\"productId\":\"665f00000000000000000001\",\"categoryId\":null,\"discountPercent\":20,\"startDate\":\"2026-12-01T00:00:00.000Z\",\"endDate\":\"2026-12-07T23:59:59.999Z\",\"isActive\":true,\"link\":null}"
+                  }
+                }
               }
             }
           }
@@ -4622,6 +5254,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4670,6 +5305,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4727,6 +5365,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4824,6 +5465,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -4892,6 +5536,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -4973,6 +5620,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5022,6 +5672,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5094,6 +5747,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5174,6 +5830,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5233,6 +5892,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5277,6 +5939,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5326,6 +5991,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5341,13 +6009,13 @@
           "Contents"
         ],
         "summary": "Get CMS contents (optional field filter)",
-        "description": "",
+        "description": "Includes `prices`: { shippingFee (USD per order), taxRate (percent of the subtotal after any promo discount), wholesaleAccountFee (USD, one-time; 0 = off) }. Use key=prices to get only the prices.",
         "parameters": [
           {
-            "name": "field",
+            "name": "key",
             "in": "query",
             "required": false,
-            "description": "Optional single content field, e.g. aboutUs, termsAndCondition, privacyPolicy",
+            "description": "Optional single content field, e.g. prices, aboutUs, termsAndCondition, privacyPolicy",
             "schema": {
               "type": "string"
             }
@@ -5370,6 +6038,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5383,7 +6054,7 @@
           "Contents"
         ],
         "summary": "Update CMS contents (admin)",
-        "description": "Roles: admin, supper_admin",
+        "description": "Send only what changes. `prices` can be partial; missing prices keep their value. Prices must be JSON numbers: shippingFee >= 0, taxRate 0-100, wholesaleAccountFee 0 or >= 0.50. New prices apply to the next checkout and fee payment. Setting wholesaleAccountFee to 0 turns the fee off and unlocks wholesale accounts that have not paid it.\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -5416,6 +6087,27 @@
                   },
                   "footerText": {
                     "type": "string"
+                  },
+                  "prices": {
+                    "type": "object",
+                    "properties": {
+                      "shippingFee": {
+                        "type": "number",
+                        "minimum": 0,
+                        "example": 10
+                      },
+                      "taxRate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "example": 8.25
+                      },
+                      "wholesaleAccountFee": {
+                        "type": "number",
+                        "minimum": 0,
+                        "example": 20
+                      }
+                    }
                   }
                 }
               }
@@ -5439,6 +6131,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5454,7 +6149,7 @@
           "FAQ"
         ],
         "summary": "List FAQs",
-        "description": "",
+        "description": "Site-wide FAQs (not tied to a category). Sorted by `order` ascending unless `sort` is given. searchTerm matches question or answer. Send a large `limit` to get every FAQ in one page.",
         "parameters": [
           {
             "name": "page",
@@ -5510,6 +6205,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5523,7 +6221,7 @@
           "FAQ"
         ],
         "summary": "Create FAQ (admin)",
-        "description": "Roles: admin, supper_admin",
+        "description": "The new FAQ is placed at the end of the list (highest `order`).\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -5563,6 +6261,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5609,6 +6310,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5622,7 +6326,7 @@
           "FAQ"
         ],
         "summary": "Update FAQ (admin)",
-        "description": "Roles: admin, supper_admin",
+        "description": "Edits question and/or answer. To change position use PATCH /faq/reorder.\n\nRoles: admin, supper_admin",
         "security": [
           {
             "bearerAuth": []
@@ -5674,6 +6378,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5723,6 +6430,70 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/faq/reorder": {
+      "patch": {
+        "tags": [
+          "FAQ"
+        ],
+        "summary": "Reorder FAQs (admin)",
+        "description": "Send every FAQ id, in the new display order. The first id gets order 1, the next 2, and so on. Fails with 400 if an id is repeated, unknown, or missing. Returns the full list in its new order.\n\nRoles: admin, supper_admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": "MongoDB ObjectId",
+                      "example": "66f000000000000000000001"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5761,6 +6532,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5797,6 +6571,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5832,6 +6609,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5883,6 +6663,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -5930,6 +6713,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -5994,6 +6780,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -6069,6 +6858,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -6106,6 +6898,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -6160,6 +6955,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -6197,6 +6995,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"
@@ -6267,6 +7068,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -6317,6 +7121,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -6365,6 +7172,9 @@
           "401": {
             "description": "Unauthorized"
           },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
+          },
           "403": {
             "description": "Forbidden"
           },
@@ -6412,6 +7222,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "402": {
+            "description": "Wholesale account fee not paid (customer endpoints; pay via /wholesale-fee/checkout)"
           },
           "403": {
             "description": "Forbidden"

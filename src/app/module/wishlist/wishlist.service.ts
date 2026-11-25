@@ -5,6 +5,7 @@ import AppError from '@app/error/AppError.js';
 import pickQuery from '@app/utils/pickQuery.js';
 import { paginationHelper } from '@app/helpers/pagination.helpers.js';
 import { withDisplayPrice } from '../product/product.utils.js';
+import { getActiveBannerDiscounts } from '../banner/banner.discount.js';
 import type { Prisma } from '../../../../generated/prisma/index.js';
 
 const addToWishlist = async (userId: string, productId: string) => {
@@ -50,11 +51,12 @@ const getMyWishlist = async (userId: string, query: Record<string, any>, role?: 
     },
   });
   const total = await prisma.wishlist.count({ where });
+  const discounts = await getActiveBannerDiscounts();
 
   return {
     data: data.map(item => ({
       ...item,
-      product: withDisplayPrice(item.product, role),
+      product: withDisplayPrice(item.product, role, discounts),
     })),
     meta: { page, limit, total },
   };

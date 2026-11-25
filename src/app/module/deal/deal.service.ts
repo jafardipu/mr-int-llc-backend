@@ -9,6 +9,7 @@ import {
   type Prisma,
 } from '../../../../generated/prisma/index.js';
 import { withDisplayPrice } from '../product/product.utils.js';
+import { getActiveBannerDiscounts } from '../banner/banner.discount.js';
 
 const dealInclude = {
   product: { include: { images: true, brand: true, category: true } },
@@ -124,11 +125,12 @@ const getAllDeal = async (
   });
   const total = await prisma.deal.count({ where });
   const uniqueData = uniqueByProductId(data);
+  const discounts = await getActiveBannerDiscounts();
 
   return {
     data: uniqueData.map(item => ({
       ...item,
-      product: withDisplayPrice(item.product, role),
+      product: withDisplayPrice(item.product, role, discounts),
     })),
     meta: { page, limit, total: uniqueData.length },
   };
@@ -182,7 +184,14 @@ const getDealById = async (id: string, role?: string) => {
   });
   if (!result || result.isDeleted)
     throw new AppError(httpStatus.NOT_FOUND, 'Deal not found');
-  return { ...result, product: withDisplayPrice(result.product, role) };
+  return {
+    ...result,
+    product: withDisplayPrice(
+      result.product,
+      role,
+      await getActiveBannerDiscounts(),
+    ),
+  };
 };
 
 const updateDeal = async (id: string, payload: any) => {

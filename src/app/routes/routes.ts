@@ -21,6 +21,7 @@ import { contactRoutes } from '@app/module/contact/contact.route.js';
 import { addressRoutes } from '@app/module/address/address.route.js';
 import { stripeRoutes } from '@app/module/stripe/stripe.route.js';
 import { promoCodeRoutes } from '@app/module/promoCode/promoCode.route.js';
+import { wholesaleFeeRoutes } from '@app/module/wholesaleFee/wholesaleFee.route.js';
 
 const router: Router = Router();
 
@@ -47,6 +48,7 @@ const moduleRoutes = [
   { path: '/contact', route: contactRoutes },
   { path: '/address', route: addressRoutes },
   { path: '/promo-codes', route: promoCodeRoutes },
+  { path: '/wholesale-fee', route: wholesaleFeeRoutes },
 ];
 
 moduleRoutes.forEach(route => router.use(route.path, route.route));

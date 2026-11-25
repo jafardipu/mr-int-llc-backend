@@ -3,7 +3,7 @@ import { Router } from 'express';
 import multer, { memoryStorage } from 'multer';
 import { userController } from './user.controller.js';
 import { ADMIN_ROLES, AUTH_ROLES, USER_ROLE } from './user.constants.js';
-import auth from '@app/middleware/auth.js';
+import auth, { authAllowUnpaidFee } from '@app/middleware/auth.js';
 
 const router: Router = Router();
 const storage = memoryStorage();
@@ -18,7 +18,7 @@ router.post(
 
 router.patch(
   '/update-my-profile',
-  auth(...AUTH_ROLES),
+  authAllowUnpaidFee(...AUTH_ROLES),
   upload.single('profile'),
   parseData(),
   userController.updateMyProfile,
@@ -40,13 +40,13 @@ router.patch(
 
 router.delete(
   '/delete-my-account',
-  auth(...AUTH_ROLES),
+  authAllowUnpaidFee(...AUTH_ROLES),
   userController.deleteMYAccount,
 );
 
 router.delete('/:id', auth(...ADMIN_ROLES), userController.deleteUser);
 
-router.get('/my-profile', auth(...AUTH_ROLES), userController.getMyProfile);
+router.get('/my-profile', authAllowUnpaidFee(...AUTH_ROLES), userController.getMyProfile);
 
 router.get('/:id', auth(...ADMIN_ROLES), userController.getUserById);
 

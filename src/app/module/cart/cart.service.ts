@@ -1,8 +1,12 @@
- 
+
 import httpStatus from 'http-status';
 import prisma from '@app/shared/prisma.js';
 import AppError from '@app/error/AppError.js';
-import { resolveUnitPrice, withDisplayPrice } from '../product/product.utils.js';
+import { withDisplayPrice } from '../product/product.utils.js';
+import { getActiveBannerDiscounts } from '../banner/banner.discount.js';
+
+// Same rounding as checkout, so the cart total matches the order total.
+const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
 const getOrCreateCart = async (userId: string) => {
   const existing = await prisma.cart.findUnique({ where: { userId } });
@@ -25,18 +29,21 @@ const getCart = async (userId: string, role?: string) => {
     },
   });
 
+  const discounts = await getActiveBannerDiscounts();
   const items = (fullCart?.items || []).map(item => {
-    const product = withDisplayPrice(item.product, role);
-    const unitPrice = resolveUnitPrice(item.product, role);
+    const product = withDisplayPrice(item.product, role, discounts);
+    const unitPrice = product.displayPrice;
     return {
       ...item,
       product,
       unitPrice,
-      lineTotal: unitPrice * item.quantity,
+      lineTotal: roundMoney(unitPrice * item.quantity),
     };
   });
 
-  const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const subtotal = roundMoney(
+    items.reduce((sum, item) => sum + item.lineTotal, 0),
+  );
 
   return {
     ...fullCart,

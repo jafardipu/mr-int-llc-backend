@@ -7,6 +7,11 @@ import pickQuery from '@app/utils/pickQuery.js';
 import { paginationHelper } from '@app/helpers/pagination.helpers.js';
 import { deleteFromS3 } from '@app/utils/s3.js';
 
+// Product count that leaves out soft-deleted products.
+const productCount = {
+  _count: { select: { products: { where: { isDeleted: false } } } },
+} as const;
+
 const createCategory = async (payload: Prisma.CategoryCreateInput) => {
   const isExist = await prisma.category.findFirst({
     where: {
@@ -79,16 +84,14 @@ const getAllCategory = async (query: Record<string, any>) => {
         }
         return { [trimmed]: 'asc' };
       })
-    : [{ createdAt: 'asc' }];
+    : [{ createdAt: 'desc' }];
 
   const data = await prisma.category.findMany({
     where,
     skip,
     take: limit,
     orderBy,
-    include: {
-      _count: { select: { products: true } },
-    },
+    include: productCount,
   });
 
   const total = await prisma.category.count({ where });
@@ -105,7 +108,7 @@ const getCategoryById = async (id: string) => {
       id,
     },
     include: {
-      _count: { select: { products: true } },
+      ...productCount,
       products: {
         where: { isDeleted: false },
         take: 12,

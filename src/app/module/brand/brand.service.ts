@@ -7,6 +7,11 @@ import pickQuery from '@app/utils/pickQuery.js';
 import { paginationHelper } from '@app/helpers/pagination.helpers.js';
 import { deleteFromS3 } from '@app/utils/s3.js';
 
+// Product count that leaves out soft-deleted products.
+const productCount = {
+  _count: { select: { products: { where: { isDeleted: false } } } },
+} as const;
+
 const createBrand = async (payload: Prisma.BrandCreateInput) => {
   const isExist = await prisma.brand.findFirst({
     where: { name: payload.name },
@@ -63,15 +68,24 @@ const getAllBrand = async (query: Record<string, any>) => {
         if (trimmed.startsWith('-')) return { [trimmed.slice(1)]: 'desc' };
         return { [trimmed]: 'asc' };
       })
-    : [{ createdAt: 'asc' }];
+    : [{ createdAt: 'desc' }];
 
-  const data = await prisma.brand.findMany({ where, skip, take: limit, orderBy });
+  const data = await prisma.brand.findMany({
+    where,
+    skip,
+    take: limit,
+    orderBy,
+    include: productCount,
+  });
   const total = await prisma.brand.count({ where });
   return { data, meta: { page, limit, total } };
 };
 
 const getBrandById = async (id: string) => {
-  const result = await prisma.brand.findUnique({ where: { id } });
+  const result = await prisma.brand.findUnique({
+    where: { id },
+    include: productCount,
+  });
   if (!result || result.isDeleted)
     throw new AppError(httpStatus.NOT_FOUND, 'Brand not found!');
   return result;

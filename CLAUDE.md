@@ -50,12 +50,13 @@ BullMQ workers in `src/app/workers/` run inside the API process.
   - `auth(...roles)` takes role lists from `module/users/user.constants.ts`: `ADMIN_ROLES`, `CUSTOMER_ROLES`, `AUTH_ROLES`.
   - The roles are `supper_admin` (that spelling is real), `admin`, `retail` and `wholesale`.
   - A wrong role, a blocked account or an unverified account all return **401**, not 403. A deleted user returns 404.
+  - A wholesale account whose one-time fee (`WholesaleFee`; price in `Contents.prices.wholesaleAccountFee`) is unpaid gets **402** from `auth()`. Only routes using `authAllowUnpaidFee` let it through (fee, profile, change-password, notifications), and `optionalAuth` treats it as a guest. The fee record is created at sign-up, so accounts without one never owe it. Fee payments share `POST /payments/webhook` and are recognised by `metadata.type === 'wholesale_fee'`.
   - `optionalAuth` is for public endpoints that personalize the response when a token is present.
   - `req.user` is the JWT payload (`userId`, `role`, ...). Global type augmentations (`req.user`, `req.rawBody`, `global.socketio`) live in `src/app/interface/index.d.ts`.
 
 ### Orders and payments (spans `order`, `payment`, `promoCode`, `workers`)
 
-- **Pricing:** `priceCart` in `order.service.ts` is the single pricing source for `GET /orders/checkout-summary` and `POST /orders/checkout`. Shipping and tax come from env (`SHIPPING_FEE`, `TAX_RATE` → `config.checkout`). Price fields sent by the client are ignored.
+- **Pricing:** `priceCart` in `order.service.ts` is the single pricing source for `GET /orders/checkout-summary` and `POST /orders/checkout`. Shipping and tax come from the admin-edited `Contents.prices` (read through `getPricing()` in `contents/content.pricing.ts`, no cache), not env. Startup (`defaultTask`) fills in $10 shipping / 0% tax / $20 wholesale fee when the record has no prices. Price fields sent by the client are ignored.
 - **Checkout** creates a `pending` order, decrements stock, records the promo redemption and clears the cart, all in one transaction.
 - **Payment** goes through a Stripe **Checkout Session** (hosted page). The Stripe wrapper is `src/app/class/string.class.ts`; the file name is misleading. Success and cancel URLs are built from `CLIENT_URL` (`/checkout/success`, `/checkout/cancel`). `Payment.transactionId` holds the session id (`cs_...`) while pending and the PaymentIntent id (`pi_...`) once paid; refunds use the latter.
 - **Webhook** `POST /api/v1/payments/webhook`:

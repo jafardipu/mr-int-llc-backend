@@ -38,6 +38,7 @@ model User {
   notifications       Notification[]
   prepServiceRequests PrepServiceRequest[]
   contactMessages     ContactMessage[]
+  wholesaleFee        WholesaleFee?
 
   @@map("users")
 }
@@ -100,7 +101,7 @@ model Category {
   updatedAt DateTime       @updatedAt
 
   products Product[]
-  faqs     Faq[]
+  banners  Banner[]
 
   @@map("categories")
 }
@@ -152,6 +153,7 @@ model Product {
   orderItems OrderItem[]
   reviews    Review[]
   deals      Deal[]
+  banners    Banner[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -348,6 +350,29 @@ model Payment {
   @@map("payments")
 }
 
+// One-time fee for a new wholesale account. Created at sign-up (when
+// Contents.prices.wholesaleAccountFee > 0) and paid through Stripe Checkout
+// after the email is verified. The amount charged is the current price;
+// `amount` holds what the latest checkout asked for, then what was paid. Until it is paid the account can only reach the fee, profile
+// and notification endpoints. Accounts without a record (created before the
+// fee existed, or while it was 0) are never asked to pay.
+model WholesaleFee {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String         @unique @db.ObjectId
+  amount        Float
+  status        PAYMENT_STATUS @default(pending)
+  sessionId     String? // latest Stripe Checkout Session (cs_...)
+  transactionId String? // PaymentIntent (pi_...) once paid; refunds use it
+  paidAt        DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@map("wholesale_fees")
+}
+
 // Customer uploads attachments -> admin approves (`completed`) or asks for
 // changes (`correction_required` + optional adminNote) -> customer resubmits
 // attachments -> back to `under_review`.
@@ -394,6 +419,9 @@ model Contents {
   aboutUs           String
   copyRight         String
   footerText        String
+  // Store-wide prices, edited by the admin. Missing on records made before
+  // prices existed; startup fills them in.
+  prices            ContentPrices?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -401,16 +429,25 @@ model Contents {
   @@map("contents")
 }
 
+type ContentPrices {
+  // Flat shipping fee in USD added to every order.
+  shippingFee         Float @default(0)
+  // Tax in percent, e.g. 8.25, charged on the order subtotal after any promo discount.
+  taxRate             Float @default(0)
+  // One-time fee in USD for a new wholesale account. 0 turns the fee off.
+  wholesaleAccountFee Float @default(0)
+}
+
+// Site-wide FAQs. `order` is the display position (lowest first); the admin
+// changes it with PATCH /faq/reorder.
 model Faq {
-  id         String  @id @default(auto()) @map("_id") @db.ObjectId
-  question   String
-  answer     String
-  categoryId String? @db.ObjectId
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  question String
+  answer   String
+  order    Int    @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  category Category? @relation(fields: [categoryId], references: [id])
 
   @@map("faqs")
 }
@@ -432,15 +469,32 @@ model Notification {
   @@map("notifications")
 }
 
+// A homepage banner points to one product or one category. With
+// discountPercent set, that product (or every product in that category) is
+// sold at the discount while startDate <= now <= endDate.
+// Banners made before targets existed have none of the target/discount fields
+// (missing, not null), only `link`.
 model Banner {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  image     String
-  link      String?
-  isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  image           String
+  targetType      BannerTarget?
+  productId       String?       @db.ObjectId
+  categoryId      String?       @db.ObjectId
+  discountPercent Float?
+  startDate       DateTime?
+  endDate         DateTime?
+  link            String? // legacy: banners made before targets existed
+  isActive        Boolean       @default(true)
+  isDeleted       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
+  product  Product?  @relation(fields: [productId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([productId])
+  @@index([categoryId])
+  @@index([isActive, isDeleted])
   @@map("banners")
 }
 
@@ -530,4 +584,9 @@ enum PromoDiscountType {
 enum DealType {
   weekly
   clearance
+}
+
+enum BannerTarget {
+  product
+  category
 }

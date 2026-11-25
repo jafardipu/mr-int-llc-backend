@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 import catchAsync from '@app/utils/catchAsync.js';
 import config from '@app/config/index.js';
 import prisma from '@app/shared/prisma.js';
+import { isWholesaleFeeDue } from '@app/module/wholesaleFee/wholesaleFee.utils.js';
 
 const optionalAuth = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -22,8 +23,11 @@ const optionalAuth = catchAsync(
           id: decode.userId,
           isDeleted: false,
         },
+        include: { wholesaleFee: { select: { status: true } } },
       });
-      if (user && user.status !== 'blocked') {
+      // A wholesale account that still owes its fee browses as a guest, so
+      // it sees retail prices until it pays.
+      if (user && user.status !== 'blocked' && !isWholesaleFeeDue(user)) {
         req.user = decode;
       }
     } catch {
