@@ -1,6 +1,8 @@
 node_modules
 # Keep environment variables out of version control
 .env
+# Kubernetes secret with real values (copy of k8s/secret.example.yaml)
+k8s/secret.yaml
 
 generated
 dist

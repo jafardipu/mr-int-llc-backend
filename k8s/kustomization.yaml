@@ -4,7 +4,8 @@ namespace: mr-int-llc-ecom
 resources:
   - namespace.yaml
   - configmap.yaml
-  - secret.example.yaml
+  # Real values, not committed: copy secret.example.yaml to secret.yaml and fill it in.
+  - secret.yaml
   - redis.yaml
   - api.yaml
 images:

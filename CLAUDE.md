@@ -79,7 +79,7 @@ The OpenAPI spec is **hand-maintained** as an operation list in `src/app/docs/bu
 
 - `DATABASE_URL` in `.env` points at a MongoDB Atlas cluster holding real data. There are no migrations on MongoDB. `prisma db push`, `pnpm seed`, and turning on `UNPAID_ORDER_EXPIRY_HOURS` all write to that database.
 - The Docker build fails on purpose if any `@app/` import survives in `dist` (a check that the alias rewrite worked).
-- `k8s/kustomization.yaml` applies `k8s/secret.example.yaml` directly, and that file contains real credentials. Don't copy values from it.
+- `k8s/kustomization.yaml` applies `k8s/secret.yaml`, which is gitignored and holds the real credentials. `k8s/secret.example.yaml` is the committed template with empty values. Never put real values in the template: GitHub push protection rejects them, and they were scrubbed from history once already.
 - Don't trust `pnpm generate` (`generateFolder.js`) as-is:
   - the generated controller imports the service without `.js`;
   - its auto-registration regex doesn't match `routes.ts`, so you must register new routes by hand;
